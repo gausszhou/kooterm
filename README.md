@@ -1,12 +1,12 @@
-# Web Terminal
+# Kooterm
 
-Web Terminal 和 Web VNC 技术调研
+Kooterm - Web 终端和 Web VNC 技术调研
 
 ## 预览
 
-![](https://www.gausszhou.top/static/data/github/web-terminal/terminal.png)
+![](https://www.gausszhou.top/static/data/github/kooterm/terminal.png)
 
-![](https://www.gausszhou.top/static/data/github/web-terminal/vnc.webp)
+![](https://www.gausszhou.top/static/data/github/kooterm/vnc.webp)
 
 ## 部署 VNC
 
@@ -44,9 +44,9 @@ pnpm dev:service   # 启动后端服务 (端口由服务配置决定)
 pnpm build
 
 # 构建脚本会依次构建：
-# 1. web-terminal-common (公共库)
-# 2. web-terminal-portal (前端门户)
-# 3. web-terminal-service (后端服务)
+# 1. kooterm-common (公共库)
+# 2. kooterm-portal (前端门户)
+# 3. kooterm-service (后端服务)
 ```
 
 ### 启动服务

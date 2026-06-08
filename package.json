@@ -1,16 +1,16 @@
 {
-  "name": "web-terminal-monorepo",
+  "name": "@kooterm/monorepo",
   "version": "1.0.0",
-  "description": "Web Terminal Monorepo - 包含前端门户和后端服务",
+  "description": "Kooterm Monorepo - 包含前端门户和后端服务",
   "type": "module",
   "private": true,
   "scripts": {
     "build": "sh shells/build.sh",
-    "build:common": "pnpm --filter @web-terminal/common build",
-    "test:common": "pnpm --filter @web-terminal/common test",
-    "dev:portal": "pnpm --filter @web-terminal/portal dev",
-    "dev:service": "pnpm --filter @web-terminal/service dev",
-    "start": "pnpm --filter @web-terminal/service start",
+    "build:common": "pnpm --filter @kooterm/common build",
+    "test:common": "pnpm --filter @kooterm/common test",
+    "dev:portal": "pnpm --filter @kooterm/portal dev",
+    "dev:service": "pnpm --filter @kooterm/service dev",
+    "start": "pnpm --filter @kooterm/service start",
     "lint": "pnpm --parallel lint",
     "clean": "pnpm --parallel clean && rm -rf packages/*/node_modules"
   },
@@ -23,7 +23,7 @@
   ],
   "keywords": [
     "monorepo",
-    "web-terminal",
+    "kooterm",
     "terminal",
     "express",
     "socket.io"

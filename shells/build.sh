@@ -2,19 +2,15 @@ set -e
 
 pnpm i 
 
-cd packages/web-terminal-common
+cd packages/kooterm-common
 pnpm build
 
 cd -
-cd packages/web-terminal-mockpty
+cd packages/kooterm-portal
 pnpm build
 
 cd -
-cd packages/web-terminal-portal
-pnpm build
-
-cd -
-cd packages/web-terminal-service
+cd packages/kooterm-service
 pnpm build
 
 cd -
