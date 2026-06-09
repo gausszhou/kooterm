@@ -51,7 +51,7 @@ export function useWebSocket(server: http.Server) {
   wss.addListener('listening', () => {
     logger.info('WebSocket服务器已启动，等待客户端连接...');
   });
-  const terminalManager = new TerminalManager();
+  const terminalManager = new TerminalManager(Number(process.env.TERMINAL_MAX) || 10);
   const vncManager = new VNCManager();
   // WebSocket连接处理
   wss.addListener('connection', (ws: WebSocket, req) => {
