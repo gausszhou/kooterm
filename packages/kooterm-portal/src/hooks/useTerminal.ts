@@ -2,6 +2,7 @@ import { ref, computed, type Ref } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
+import { ClipboardAddon } from '@xterm/addon-clipboard';
 import { Frame, FrameType } from '@kooterm/common';
 import { WebSocketConnection } from '@/modules/WebSocketConnection';
 import { WebSocketDataChannel } from '@/modules/WebSocketDataChannel';
@@ -87,6 +88,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
 
     useXTermClipboard(terminal);
 
+    terminal.loadAddon(new ClipboardAddon());
     terminal.loadAddon(new Unicode11Addon());
     terminal.unicode.activeVersion = '11';
 
