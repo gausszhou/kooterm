@@ -2,7 +2,7 @@
   <div class="terminal-page-container">
     <div class="terminal-header">
       <div class="header-left">
-        <span class="terminal-title">Kooterm</span>
+        <span class="terminal-title">KooTerm</span>
       </div>
       <div class="header-right">
         <span class="connection-dot" :class="statusClass"></span>
@@ -30,7 +30,7 @@ const props = defineProps({
 });
 
 const terminalRef = ref<HTMLElement>();
-const { connected, connecting, networkRef, statusClass, statusText, connection, refresh, init, destroy } = useTerminal(terminalRef);
+const { statusClass, statusText, connection, refresh, init, destroy } = useTerminal(terminalRef);
 
 onMounted(() => init(props.url));
 onUnmounted(destroy);
@@ -107,7 +107,7 @@ onUnmounted(destroy);
 
 .terminal-container {
   padding: 8px;
-  height: calc(100svh - 50px);
+  height: calc(100svh - 40px);
   background-color: #0a0a0a;
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "@kooterm/portal",
   "version": "1.0.0",
-  "description": "Kooterm 前端门户",
+  "description": "KooTerm 前端门户",
   "type": "module",
   "scripts": {
     "dev": "vite",

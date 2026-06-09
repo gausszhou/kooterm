@@ -40,7 +40,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     return this.ws.binaryType || 'arraybuffer';
   }
 
-  get readyState(): number {
+  get readyState() {
     return this.ws.readyState;
   }
 
