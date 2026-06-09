@@ -173,8 +173,17 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
 
   public reconnect(url: string, protocol?: string) {
     logger.debug('重新连接到:', url, protocol);
+    const oldWs = this.ws;
     this.ws = this.createWebSocket(url, protocol);
     this.identifier = FrameCodec.randomIdentifier();
+    oldWs.close();
+    clearInterval(this.speedTimer);
+    this.speedTimer = setInterval(() => {
+      this._upSpeed = this._upBytes - this._lastUpBytes;
+      this._downSpeed = this._downBytes - this._lastDownBytes;
+      this._lastUpBytes = this._upBytes;
+      this._lastDownBytes = this._downBytes;
+    }, 1000);
   }
 
   // === 自定义方法 ===
