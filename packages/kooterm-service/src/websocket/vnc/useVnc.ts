@@ -34,6 +34,7 @@ export class VNCManager {
   removeConnection(ws: WebSocket) {
     const connection = this.vncMap.get(ws);
     if (connection) {
+      connection.close();
       this.vncMap.delete(ws);
     }
   }

@@ -6,21 +6,18 @@ import { Terminal } from '@xterm/xterm';
  * @param terminal 
  */
 export function useXTermClipboard(terminal: Terminal) {
-  // 复制
   terminal.attachCustomKeyEventHandler(arg => {
-    if (arg.ctrlKey && arg.code === 'KeyC' && arg.type === 'keydown') {
-      const selection = terminal.getSelection();
-      if (selection) {
-        navigator.clipboard.writeText(selection);
+    if (arg.type === 'keydown') {
+      if (arg.ctrlKey && arg.shiftKey && arg.code === 'KeyC') {
+        const selection = terminal.getSelection();
+        if (selection) {
+          navigator.clipboard.writeText(selection);
+          return false;
+        }
+      }
+      if (arg.ctrlKey && arg.shiftKey && arg.code === 'KeyV') {
         return false;
       }
-    }
-    return true;
-  });
-
-  terminal.attachCustomKeyEventHandler(arg => {
-    if (arg.ctrlKey && arg.code === 'KeyV' && arg.type === 'keydown') {
-      return false;
     }
     return true;
   });

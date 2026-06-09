@@ -30,6 +30,7 @@ export class TerminalManager {
   public removeConnection(ws: WebSocket) {
     const connection = this.terminalMap.get(ws);
     if (connection) {
+      connection.kill();
       this.terminalMap.delete(ws);
     }
   }
