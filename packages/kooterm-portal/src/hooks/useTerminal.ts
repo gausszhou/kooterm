@@ -73,6 +73,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
 
   const initTerminal = () => {
     terminal = new Terminal({
+      allowProposedApi: true,
       theme: {
         background: '#1e1e1e',
         foreground: '#ffffff',
