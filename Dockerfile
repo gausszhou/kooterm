@@ -1,6 +1,4 @@
-FROM node:20-slim AS builder
-
-RUN apt-get update -qq && apt-get install -y -qq python3 make g++ && rm -rf /var/lib/apt/lists/*
+FROM node:20 AS builder
 
 RUN corepack enable && corepack prepare pnpm@9 --activate
 
@@ -17,8 +15,6 @@ COPY . .
 RUN pnpm build
 
 FROM node:20-slim AS runner
-
-RUN corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
 
