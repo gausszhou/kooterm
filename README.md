@@ -26,11 +26,14 @@ docker run -d --name ubuntu-xfce -p 5901:5901 -p 6901:6901 -e VNC_PW="vncpasswor
 # 构建镜像
 docker build -t kooterm .
 
-# 运行容器
-docker run -d --name kooterm -p 3001:3001 kooterm
+# 运行容器（映射 ./.bashrc 到容器内 /root/.bashrc）
+docker run -d --name kooterm -p 3001:3001 -v ./.bashrc:/root/.bashrc kooterm
 
 # 查看日志
 docker logs -f kooterm
+
+# 进入容器调试（基于 Ubuntu，支持 apt/sudo）
+docker exec -it kooterm bash
 ```
 
 访问 `http://localhost:3001` 即可打开终端。

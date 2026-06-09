@@ -20,9 +20,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     sudo \
     ca-certificates \
+    locales \
+    && locale-gen en_US.UTF-8 \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 WORKDIR /app
 
