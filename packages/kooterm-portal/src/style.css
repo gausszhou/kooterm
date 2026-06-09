@@ -1,8 +1,7 @@
-/* 全局样式 */
 body {
     margin: 0;
     background-color: #1e1e1e;
-    font-family: 'Courier New', monospace;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
     color: #ffffff;
 }
 

@@ -5,15 +5,15 @@ import legacy from '@vitejs/plugin-legacy';
 export default defineConfig({
   plugins: [vue(), legacy()],
   server: {
-    port: 3001,
+    port: 3002,
     proxy: {
       '/api/ws/terminal': {
-        target: 'ws://localhost:3000',
+        target: 'ws://localhost:3001',
         changeOrigin: true,
         ws: true
       },
       '/api/ws/vnc': {
-        target: 'ws://localhost:3000',
+        target: 'ws://localhost:3001',
         changeOrigin: true,
         ws: true
       }

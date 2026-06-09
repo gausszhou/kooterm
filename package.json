@@ -21,6 +21,9 @@
   "workspaces": [
     "packages/*"
   ],
+  "pnpm": {
+    "onlyBuiltDependencies": ["node-pty"]
+  },
   "keywords": [
     "monorepo",
     "kooterm",

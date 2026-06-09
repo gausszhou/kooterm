@@ -17,7 +17,7 @@
   "dependencies": {
     "@maximegris/node-websockify": "^1.0.7",
     "@kooterm/common": "workspace:*",
-    "@gausszhou/mock-pty": "^0.0.2",
+    "node-pty": "^1.0.0",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "loglevel": "^1.9.2",
