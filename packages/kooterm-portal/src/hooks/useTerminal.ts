@@ -129,6 +129,10 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     if (!terminal || !channel) return;
     terminal.reset();
     channel._send(FrameType.TERMINAL_REFRESH, '');
+    requestAnimationFrame(() => {
+      fitAddon.fit();
+      sendResize();
+    });
   };
 
   const init = (url: string) => {

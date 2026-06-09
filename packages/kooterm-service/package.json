@@ -9,7 +9,7 @@
   "scripts": {
     "build": "pnpm --package=typescript dlx tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts",
+    "dev": "nodemon --exec tsx src/index.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rm -rf dist"

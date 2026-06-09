@@ -30,7 +30,7 @@ const onTerminalData = (frame: Frame, terminal: Terminal) => {
 const onTerminalResize = (frame: Frame, terminal: Terminal) => {
   const cols = frame.payload[0] << 8 | frame.payload[1];
   const rows = frame.payload[2] << 8 | frame.payload[3];
-  logger.debug(frame.identifier, '收到 TERMINAL_RESIZE 帧:', cols, rows);
+  logger.info(frame.identifier, '收到 TERMINAL_RESIZE 帧: cols=' + cols + ' rows=' + rows + ' payload=[' + Array.from(frame.payload).join(',') + ']');
   terminal.resize(cols, rows);
 };
 

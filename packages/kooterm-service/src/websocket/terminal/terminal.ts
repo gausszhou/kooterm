@@ -15,6 +15,8 @@ const defaultCwd = (): string => {
 export class Terminal {
   public identifier: number;
   private pty: IPty;
+  private cols = 80;
+  private rows = 24;
 
   constructor(identifier: number) {
     this.identifier = identifier;
@@ -24,11 +26,11 @@ export class Terminal {
 
   private createPty(): IPty {
     return spawn(shell(), [], {
-      name: 'xterm-color',
-      cols: 80,
-      rows: 24,
+      name: 'xterm-256color',
+      cols: this.cols,
+      rows: this.rows,
       cwd: defaultCwd(),
-      env: process.env as { [key: string]: string },
+      env: { TERM: 'xterm-256color', ...process.env } as { [key: string]: string },
     });
   }
 
@@ -47,6 +49,8 @@ export class Terminal {
   }
 
   resize(cols: number, rows: number) {
+    this.cols = cols;
+    this.rows = rows;
     this.pty.resize(cols, rows);
   }
 
