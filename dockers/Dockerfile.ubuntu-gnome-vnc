@@ -1,0 +1,71 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Asia/Shanghai \
+    DISPLAY=:1 \
+    VNC_PORT=5901 \
+    VNC_RESOLUTION=1280x720 \
+    VNC_PW=vncpassword
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata \
+    ca-certificates \
+    curl \
+    sudo \
+    locales \
+    && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && dpkg-reconfigure -f noninteractive tzdata \
+    && locale-gen en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gnome-session \
+    gnome-shell \
+    gnome-terminal \
+    nautilus \
+    gedit \
+    xorg \
+    dbus \
+    gsettings-desktop-schemas \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tigervnc-standalone-server \
+    tigervnc-common \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+
+RUN useradd -m -s /bin/bash -G sudo user \
+    && echo "user:user" | chpasswd \
+    && echo "root:root" | chpasswd
+
+USER user
+WORKDIR /home/user
+
+RUN mkdir -p ~/.vnc
+
+RUN echo "vncpassword" | vncpasswd -f > ~/.vnc/passwd && chmod 600 ~/.vnc/passwd
+
+COPY --chown=user:user <<"EOF" /home/user/.vnc/xstartup
+#!/bin/bash
+export PATH=$PATH:/usr/bin
+export XDG_SESSION_TYPE=x11
+export GNOME_SHELL_SESSION_MODE=ubuntu
+export XDG_CURRENT_DESKTOP=ubuntu:GNOME
+export XDG_CONFIG_DIRS=/etc/xdg/xdg-ubuntu:/etc/xdg
+
+exec gnome-session
+EOF
+
+RUN chmod +x ~/.vnc/xstartup
+
+USER root
+COPY --chown=user:user <<"EOF" /home/user/.vnc/config
+geometry=1280x720
+localhost=no
+EOF
+
+EXPOSE 5901
+
+USER user
+CMD ["vncserver", ":", "1", "-fg", "-geometry", "1280x720", "-localhost", "no"]
