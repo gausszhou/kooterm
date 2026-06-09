@@ -8,9 +8,9 @@
     <div ref="screenRef" class="vnc-screen"></div>
     <!-- 连接状态 -->
     <div v-if="!connected" class="connection-status">
-      <Loading v-if="connecting" message="正在连接 VNC 服务器..." />
+      <Loading v-if="connecting" message="Connecting to VNC server..." />
       <div v-else class="disconnected">
-        <span>未连接</span>
+        <span>Disconnected</span>
       </div>
     </div>
   </div>

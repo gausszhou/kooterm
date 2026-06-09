@@ -8,7 +8,7 @@
 const props = defineProps({
   message: {
     type: String,
-    default: '正在连接 VNC 服务器...'
+    default: 'Connecting...'
   }
 })
 </script>

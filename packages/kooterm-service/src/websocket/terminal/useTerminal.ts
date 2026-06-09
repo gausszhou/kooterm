@@ -3,7 +3,7 @@ import WebSocket from 'ws';
 import { Terminal } from './terminal.js';
 
 export const isTerminal = (frame: Frame) => {
-  return frame.type === FrameType.TERMINAL_INIT || frame.type === FrameType.TERMINAL_REFRESH || frame.type === FrameType.TERMINAL_DATA;
+  return frame.type === FrameType.TERMINAL_INIT || frame.type === FrameType.TERMINAL_REFRESH || frame.type === FrameType.TERMINAL_DATA || frame.type === FrameType.TERMINAL_RESIZE;
 };
 
 export const onPtyData = (data: string, terminal: Terminal, ws: WebSocket) => {

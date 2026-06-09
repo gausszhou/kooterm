@@ -46,6 +46,10 @@ export class Terminal {
     this.pty.write(data);
   }
 
+  resize(cols: number, rows: number) {
+    this.pty.resize(cols, rows);
+  }
+
   kill() {
     if (this.pty) this.pty.kill();
   }
