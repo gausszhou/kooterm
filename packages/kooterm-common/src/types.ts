@@ -5,6 +5,7 @@ export enum FrameType {
   TERMINAL_INIT = 0x11,
   TERMINAL_REFRESH = 0x12,
   TERMINAL_DATA = 0x13,
+  TERMINAL_RESIZE = 0x14,
   VNC_INIT = 0x21,
   VNC_DATA = 0x22,
 }

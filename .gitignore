@@ -118,5 +118,6 @@ dist
 Thumbs.db
 
 yarn.lock
-pnpm-lock.yaml
 package-lock.json
+
+.pnpm-store/

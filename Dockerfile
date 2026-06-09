@@ -1,0 +1,46 @@
+FROM node:20 AS builder
+
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+WORKDIR /app
+
+COPY pnpm-workspace.yaml package.json ./
+COPY packages/kooterm-common/package.json packages/kooterm-common/
+COPY packages/kooterm-portal/package.json packages/kooterm-portal/
+COPY packages/kooterm-service/package.json packages/kooterm-service/
+
+RUN pnpm install
+
+COPY . .
+RUN pnpm build
+
+FROM ubuntu:22.04 AS runner
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    sudo \
+    ca-certificates \
+    locales \
+    && locale-gen en_US.UTF-8 \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+WORKDIR /app
+
+COPY --from=builder /app/package.json /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/packages/kooterm-common/package.json packages/kooterm-common/
+COPY --from=builder /app/packages/kooterm-common/dist packages/kooterm-common/dist
+COPY --from=builder /app/packages/kooterm-portal/package.json packages/kooterm-portal/
+COPY --from=builder /app/packages/kooterm-portal/dist packages/kooterm-portal/dist
+COPY --from=builder /app/packages/kooterm-service/package.json packages/kooterm-service/
+COPY --from=builder /app/packages/kooterm-service/dist packages/kooterm-service/dist
+COPY --from=builder /app/packages/kooterm-service/node_modules packages/kooterm-service/node_modules
+COPY --from=builder /app/node_modules node_modules
+
+ENV PORT=3001
+EXPOSE 3001
+
+CMD ["node", "packages/kooterm-service/dist/index.js"]

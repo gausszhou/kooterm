@@ -1,0 +1,10 @@
+node_modules
+.git
+.gitignore
+*.md
+shells
+packages/*/dist
+packages/*/node_modules
+.vscode
+.env
+.env.local

@@ -4,8 +4,8 @@ import loglevel, { LogLevelDesc } from 'loglevel';
 import { Frame, FrameCodec, FrameType } from '@kooterm/common';
 import { Terminal } from './terminal/terminal.js';
 import { isEcho, onEcho } from './echo/index.js';
-import { isTerminal, TerminalManager } from './terminal/use-terminal.js';
-import { isVncMessage, VNCManager } from './vnc/use-vnc.js';
+import { isTerminal, TerminalManager } from './terminal/useTerminal.js';
+import { isVncMessage, VNCManager } from './vnc/useVnc.js';
 import { VNCServerSocket } from './vnc/vnc.js';
 
 const logger = loglevel.getLogger('WebSocketServer');
@@ -25,6 +25,13 @@ const onTerminalData = (frame: Frame, terminal: Terminal) => {
   const input = new TextDecoder().decode(frame.payload);
   logger.debug(frame.identifier, '收到 TERMINAL_DATA 帧:', frame.payloadLength);
   terminal.write(input);
+};
+
+const onTerminalResize = (frame: Frame, terminal: Terminal) => {
+  const cols = frame.payload[0] << 8 | frame.payload[1];
+  const rows = frame.payload[2] << 8 | frame.payload[3];
+  logger.info(frame.identifier, '收到 TERMINAL_RESIZE 帧: cols=' + cols + ' rows=' + rows + ' payload=[' + Array.from(frame.payload).join(',') + ']');
+  terminal.resize(cols, rows);
 };
 
 const onVncInit = (frame: Frame, socket: VNCServerSocket) => {
@@ -63,6 +70,8 @@ export function useWebSocket(server: http.Server) {
           onTerminalRefresh(frame, terminal);
         } else if (frame.type === FrameType.TERMINAL_DATA) {
           onTerminalData(frame, terminal);
+        } else if (frame.type === FrameType.TERMINAL_RESIZE) {
+          onTerminalResize(frame, terminal);
         }
       } else if (isVncMessage(frame)) {
         if (process.env.VNC_ENABLE !== 'true') {

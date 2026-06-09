@@ -18,15 +18,9 @@
 </template>
 
 <script setup lang="ts">
-
 import NetworkInfo from '@/components/NetworkInfo.vue';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import { Frame, FrameType } from '@kooterm/common';
-import { WebSocketConnection } from '@/modules/WebSocketConnection';
-import { WebSocketDataChannel } from '@/modules/WebSocketDataChannel';
-import { useXTermClipboard } from '@/hooks/useXTermClipboard';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useTerminal } from '@/hooks/useTerminal';
 
 const props = defineProps({
   url: {
@@ -35,149 +29,12 @@ const props = defineProps({
   }
 });
 
-// 组件/元素引用
-const networkRef = ref<typeof NetworkInfo>();
 const terminalRef = ref<HTMLElement>();
-// 响应式数据
-const connected = ref(false);
-const connecting = ref(false);
-const statusClass = computed(() => {
-  if (connecting.value) return 'connecting';
-  return connected.value ? 'connected' : 'disconnected';
-});
+const { connected, connecting, networkRef, statusClass, statusText, connection, refresh, init, destroy } = useTerminal(terminalRef);
 
-const statusText = computed(() => {
-  if (connecting.value) return 'Connecting...';
-  return connected.value ? 'Connected' : 'Disconnected';
-});
-
-// 非响应式数据
-let terminal: Terminal;
-let fitAddon: FitAddon;
-let connection: WebSocketConnection;
-let channel: WebSocketDataChannel;
-
-// ====== 终端事件处理 ======
-const onData = (data: string) => {
-  channel._send(FrameType.TERMINAL_DATA, data);
-};
-
-const onResize = () => {
-  fitAddon.fit();
-};
-
-const initTerminal = () => {
-  terminal = new Terminal({
-    theme: {
-      background: '#1e1e1e',
-      foreground: '#ffffff',
-      cursor: '#ffffff'
-    },
-    fontSize: 14,
-    fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace",
-    cursorBlink: true
-  });
-  // 复制
-  useXTermClipboard(terminal)
-
-  fitAddon = new FitAddon();
-  terminal.loadAddon(fitAddon);
-  // 监听终端输入
-  terminal.onData(onData);
-
-  if (terminalRef.value) {
-    terminal.open(terminalRef.value);
-    setTimeout(() => {
-      fitAddon.fit();
-    }, 100);
-  }
-  window.addEventListener('resize', onResize);
-};
-
-const destroyTerminal = () => {
-  if (terminal) {
-    terminal.dispose();
-  }
-  window.removeEventListener('resize', onResize);
-};
-
-// ====== WebSocket 事件处理 ======
-
-const onConnectionPong = () => {};
-
-const onConnectionTimeout = () => {
-  console.log('连接超时');
-  connection.reconnect(props.url);
-};
-
-
-const onChannelOpen = () => {
-  channel._send(FrameType.TERMINAL_INIT, '');
-  connected.value = true;
-  connecting.value = false;
-    networkRef.value?.updateState();
-};
-
-const onChannelClose = () => {
-  connected.value = false;
-  connecting.value = false;
-};
-
-const onChannelMessage = (event: Event) => {
-  const frame = (event as MessageEvent).data as Frame;
-  if (frame.type === FrameType.TERMINAL_DATA) {
-    const text = new TextDecoder().decode(frame.payload);
-    terminal.write(text);
-  }
-};
-
-const initWebSocket = () => {
-  connecting.value = true;
-  connection = new WebSocketConnection(props.url);
-  connection.addEventListener('pong', onConnectionPong);
-  connection.addEventListener('timeout', onConnectionTimeout);
-  channel = connection.createDataChannel('default');
-  channel.addEventListener('open', onChannelOpen);
-  channel.addEventListener('close', onChannelClose);
-  channel.addEventListener('message', onChannelMessage);
-};
-
-const destroyWebSocket = () => {
-  if (channel) {
-    channel.removeEventListener('open', onChannelOpen);
-    channel.removeEventListener('close', onChannelClose);
-    channel.removeEventListener('message', onChannelMessage);
-  }
-  if (connection) {
-    connection.close();
-  }
-};
-
-// UI 交互
-const refresh = () => {
-  terminal.reset();
-  channel._send(FrameType.TERMINAL_REFRESH, '');
-};
-
-onMounted(() => {
-  initTerminal();
-  initWebSocket();
-  window.addEventListener('beforeunload', () => {
-    destroyTerminal();
-    destroyWebSocket();
-  });
-});
-
-onUnmounted(() => {
-  destroyTerminal();
-  destroyWebSocket();
-});
+onMounted(() => init(props.url));
+onUnmounted(destroy);
 </script>
-
-<style>
-/* 导入xterm.js样式 */
-@import 'xterm/css/xterm.css';
-</style>
 
 <style scoped>
 .terminal-container {
@@ -249,9 +106,8 @@ onUnmounted(() => {
 }
 
 .terminal {
-  padding: 10px;
+  padding: 5px;
   height: calc(100svh - 50px);
-  height: calc(100vh - 50px);
 }
 
 .button {

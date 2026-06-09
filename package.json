@@ -5,12 +5,13 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "sh shells/build.sh",
+    "build": "pnpm --filter @kooterm/common build && pnpm --filter @kooterm/portal build && pnpm --filter @kooterm/service build",
     "build:common": "pnpm --filter @kooterm/common build",
     "test:common": "pnpm --filter @kooterm/common test",
     "dev:portal": "pnpm --filter @kooterm/portal dev",
     "dev:service": "pnpm --filter @kooterm/service dev",
     "start": "pnpm --filter @kooterm/service start",
+    "serve": "pnpm build && pnpm start",
     "lint": "pnpm --parallel lint",
     "clean": "pnpm --parallel clean && rm -rf packages/*/node_modules"
   },
