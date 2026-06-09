@@ -30,7 +30,7 @@ app.get("*", index);
 
 useWebSocket(server);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Web 服务运行: http://localhost:${PORT}`);
   console.log(`API 健康检查: http://localhost:${PORT}/health`);
