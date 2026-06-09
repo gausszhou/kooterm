@@ -3,7 +3,7 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Asia/Shanghai \
     DISPLAY=:1 \
-    VNC_PORT=5901 \
+    VNC_PORT=5900 \
     VNC_RESOLUTION=1280x720 \
     VNC_PW=vncpassword
 
@@ -25,14 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xorg \
     dbus-x11 \
     tigervnc-standalone-server \
-    tigervnc-common \
+    tigervnc-tools \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale/{??,??_??}/* /var/log/* \
     && useradd -m -s /bin/bash -G sudo user \
     && echo "user:user" | chpasswd \
     && echo "root:root" | chpasswd \
     && mkdir -p /home/user/.vnc \
-    && echo "vncpassword" | vncpasswd -f > /home/user/.vnc/passwd \
+    && echo "vncpassword" | tigervncpasswd -f > /home/user/.vnc/passwd \
     && chmod 600 /home/user/.vnc/passwd \
     && chown -R user:user /home/user/.vnc
 
@@ -55,7 +55,7 @@ geometry=1280x720
 localhost=no
 EOF
 
-EXPOSE 5901
+EXPOSE 5900
 
 USER user
 CMD ["vncserver", ":", "1", "-fg", "-geometry", "1280x720", "-localhost", "no"]
