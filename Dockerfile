@@ -14,7 +14,15 @@ RUN pnpm install
 COPY . .
 RUN pnpm build
 
-FROM node:20-slim AS runner
+FROM ubuntu:22.04 AS runner
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    sudo \
+    ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
 
 WORKDIR /app
 
