@@ -1,6 +1,6 @@
 FROM node:20-slim AS builder
 
-RUN corepack enable && corepack prepare pnpm --activate
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN pnpm build
 
 FROM node:20-slim AS runner
 
-RUN corepack enable && corepack prepare pnpm --activate
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
 WORKDIR /app
 
