@@ -11,6 +11,7 @@
     "dev:portal": "pnpm --filter @kooterm/portal dev",
     "dev:service": "pnpm --filter @kooterm/service dev",
     "start": "pnpm --filter @kooterm/service start",
+    "serve": "pnpm build && pnpm start",
     "lint": "pnpm --parallel lint",
     "clean": "pnpm --parallel clean && rm -rf packages/*/node_modules"
   },
