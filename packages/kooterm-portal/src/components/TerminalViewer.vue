@@ -1,5 +1,5 @@
 <template>
-  <div class="terminal-container">
+  <div class="terminal-page-container">
     <div class="terminal-header">
       <div class="header-left">
         <span class="terminal-title">Kooterm</span>
@@ -12,7 +12,7 @@
       </div>
     </div>
     <div>
-      <div ref="terminalRef" class="terminal"></div>
+      <div ref="terminalRef" class="terminal-container"></div>
     </div>
   </div>
 </template>
@@ -37,7 +37,7 @@ onUnmounted(destroy);
 </script>
 
 <style scoped>
-.terminal-container {
+.terminal-page-container {
   width: 100%;
   height: 100%;
 }
@@ -46,9 +46,9 @@ onUnmounted(destroy);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 40px;
-  background-color: #2d2d2d;
-  padding: 0 15px;
+  height: 32px;
+  background-color: #141414;
+  padding: 0 8px;
   border-bottom: 1px solid #333;
   gap: 10px;
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
@@ -105,16 +105,17 @@ onUnmounted(destroy);
   color: #aaa;
 }
 
-.terminal {
-  padding: 5px;
+.terminal-container {
+  padding: 8px;
   height: calc(100svh - 50px);
+  background-color: #0a0a0a;
 }
 
 .button {
-  padding: 4px 8px;
+  padding: 2px 8px;
   color: #ccc;
   border: 1px solid #555;
-  border-radius: 4px;
+  border-radius: 2px;
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;

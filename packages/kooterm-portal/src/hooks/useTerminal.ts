@@ -76,7 +76,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     terminal = new Terminal({
       allowProposedApi: true,
       theme: {
-        background: '#1e1e1e',
+        background: '#0a0a0a',
         foreground: '#ffffff',
         cursor: '#ffffff',
       },
