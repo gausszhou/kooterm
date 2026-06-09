@@ -4,7 +4,7 @@ KooTerm - Web 终端和 Web VNC 技术调研
 
 ## 预览
 
-![](https://www.gausszhou.top/static/data/github/kooterm/terminal.png)
+![](https://www.gausszhou.top/static/data/github/kooterm/btop.png)
 
 ![](https://www.gausszhou.top/static/data/github/kooterm/vnc.webp)
 
