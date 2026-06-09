@@ -37,14 +37,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN useradd -m -s /bin/bash -G sudo user \
     && echo "user:user" | chpasswd \
-    && echo "root:root" | chpasswd
+    && echo "root:root" | chpasswd \
+    && mkdir -p /home/user/.vnc \
+    && echo "vncpassword" | vncpasswd -f > /home/user/.vnc/passwd \
+    && chmod 600 /home/user/.vnc/passwd \
+    && chown -R user:user /home/user/.vnc
 
 USER user
 WORKDIR /home/user
-
-RUN mkdir -p ~/.vnc
-
-RUN echo "vncpassword" | vncpasswd -f > ~/.vnc/passwd && chmod 600 ~/.vnc/passwd
 
 COPY --chown=user:user <<"EOF" /home/user/.vnc/xstartup
 #!/bin/bash
