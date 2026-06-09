@@ -1,7 +1,7 @@
 {
   "name": "@kooterm/service",
   "version": "1.0.0",
-  "description": "Kooterm 后端服务",
+  "description": "KooTerm 后端服务",
   "type": "module",
     "author": "",
   "license": "MIT",

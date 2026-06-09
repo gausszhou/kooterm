@@ -1,7 +1,7 @@
 {
   "name": "@kooterm/monorepo",
   "version": "1.0.0",
-  "description": "Kooterm Monorepo - 包含前端门户和后端服务",
+  "description": "KooTerm Monorepo - 包含前端门户和后端服务",
   "type": "module",
   "private": true,
   "scripts": {
