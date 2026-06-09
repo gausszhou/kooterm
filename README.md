@@ -1,6 +1,6 @@
-# Kooterm
+# KooTerm
 
-Kooterm - Web 终端和 Web VNC 技术调研
+KooTerm - Web 终端和 Web VNC 技术调研
 
 ## 预览
 
