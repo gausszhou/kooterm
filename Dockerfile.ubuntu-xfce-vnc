@@ -3,7 +3,7 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Asia/Shanghai \
     DISPLAY=:1 \
-    VNC_PORT=5902 \
+    VNC_PORT=5901 \
     VNC_RESOLUTION=1280x720 \
     VNC_PW=vncpassword
 
@@ -20,16 +20,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gnome-session \
-    gnome-shell \
-    gnome-terminal \
+    xfce4 \
+    xfce4-terminal \
     xorg \
-    dbus \
-    gsettings-desktop-schemas \
+    dbus-x11 \
     tigervnc-standalone-server \
     tigervnc-common \
     && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale/{??,??_??}/* /usr/share/gnome/help /var/log/* \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale/{??,??_??}/* /var/log/* \
     && useradd -m -s /bin/bash -G sudo user \
     && echo "user:user" | chpasswd \
     && echo "root:root" | chpasswd \
@@ -45,11 +43,8 @@ COPY --chown=user:user <<"EOF" /home/user/.vnc/xstartup
 #!/bin/bash
 export PATH=$PATH:/usr/bin
 export XDG_SESSION_TYPE=x11
-export GNOME_SHELL_SESSION_MODE=ubuntu
-export XDG_CURRENT_DESKTOP=ubuntu:GNOME
-export XDG_CONFIG_DIRS=/etc/xdg/xdg-ubuntu:/etc/xdg
 
-exec gnome-session
+exec startxfce4
 EOF
 
 RUN chmod +x ~/.vnc/xstartup

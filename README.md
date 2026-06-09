@@ -15,20 +15,20 @@ KooTerm - Web 终端和 Web VNC 技术调研
 ```bash
 # macos-vnc
 docker run -d --name macos -p 5900:5900 -p 8006:8006 -e "VERSION=14" -e VNC_RESOLUTION=1024x768 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v "${PWD:-.}/macos:/storage" --stop-timeout 120 dockurr/macos
-# ubuntu-xfce-vnc
-docker run -d --name ubuntu-xfce -p 5901:5901 -p 6901:6901 -e VNC_PW="vncpassword" -e VNC_RESOLUTION=1024x768 consol/ubuntu-xfce-vnc
-```
 
-### ubuntu-gnome-vnc（自定义）
+# ubuntu-xfce-vnc（自定义）
+## 构建镜像
+docker build -f Dockerfile.ubuntu-xfce-vnc -t ubuntu-xfce-vnc .
+## 运行容器
+docker run -d --name ubuntu-xfce-vnc -p 5901:5901 ubuntu-xfce-vnc
+## VNC 连接 localhost:5901/5901，密码 vncpassword
 
-```bash
-# 构建镜像
-docker build -f dockers/Dockerfile.ubuntu-gnome-vnc -t ubuntu-gnome-vnc .
-
-# 运行容器
-docker run -d --name ubuntu-gnome-vnc -p 5902:5901 ubuntu-gnome-vnc
-
-# VNC 连接 localhost:5902，密码 vncpassword
+# ubuntu-gnome-vnc（自定义）
+## 构建镜像
+docker build -f Dockerfile.ubuntu-gnome-vnc -t ubuntu-gnome-vnc .
+## 运行容器
+docker run -d --name ubuntu-gnome-vnc -p 5902:5902 ubuntu-gnome-vnc
+## VNC 连接 localhost:5902/5902，密码 vncpassword
 ```
 
 ## Docker 部署
