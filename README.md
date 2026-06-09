@@ -40,8 +40,12 @@ docker build -t kooterm .
 # 首次运行
 docker run -d --name kooterm -p 53001:3001 kooterm
 
-# 重新构建并重启（更新代码后）
-docker build -t kooterm . && docker stop kooterm && docker rm kooterm && docker run -d --name kooterm -p 53001:3001 kooterm
+# 重新构建并重启
+docker build -t kooterm . && \
+(docker stop kooterm || true) && \
+(docker rm kooterm || true) && \
+docker-compose up -d --build
+
 
 # 查看日志
 docker logs -f kooterm
