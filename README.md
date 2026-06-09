@@ -20,6 +20,21 @@ docker run -d --name macos -p 5900:5900 -p 8006:8006 -e "VERSION=14" -e VNC_RESO
 docker run -d --name ubuntu-xfce -p 5901:5901 -p 6901:6901 -e VNC_PW="vncpassword" -e VNC_RESOLUTION=1024x768 consol/ubuntu-xfce-vnc
 ```
 
+## Docker 部署
+
+```bash
+# 构建镜像
+docker build -t kooterm .
+
+# 运行容器
+docker run -d --name kooterm -p 3001:3001 kooterm
+
+# 查看日志
+docker logs -f kooterm
+```
+
+访问 `http://localhost:3001` 即可打开终端。
+
 ## 开发
 
 ### 安装依赖
