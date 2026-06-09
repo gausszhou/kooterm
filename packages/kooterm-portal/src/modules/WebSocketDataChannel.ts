@@ -34,7 +34,7 @@ export class WebSocketDataChannel extends EventTarget implements WebSocket {
     return this.connection.binaryType;
   }
 
-  get readyState(): number {
+  get readyState() {
     return this.connection.readyState;
   }
 
