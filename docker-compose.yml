@@ -1,0 +1,12 @@
+version: '2.4'
+
+services:
+  kooterm:
+    build: .
+    container_name: kooterm
+    ports:
+      - "53001:3001"
+    restart: unless-stopped
+    cpus: '1'           # 限制 1个CPU核心
+    mem_limit: 2g       # 限制 2GB 内存
+    mem_reservation: 1g # 预留 1GB 内存（可选）
