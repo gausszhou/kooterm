@@ -1,7 +1,7 @@
 import { ref, computed, type Ref } from 'vue';
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import { Unicode11Addon } from 'xterm-addon-unicode11';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { Frame, FrameType } from '@kooterm/common';
 import { WebSocketConnection } from '@/modules/WebSocketConnection';
 import { WebSocketDataChannel } from '@/modules/WebSocketDataChannel';
@@ -82,7 +82,6 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
       fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace",
       cursorBlink: true,
       convertEol: true,
-      allowProposedApi: true,
     });
 
     useXTermClipboard(terminal);
