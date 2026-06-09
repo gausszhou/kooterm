@@ -13,18 +13,40 @@ export const onPtyData = (data: string, terminal: Terminal, ws: WebSocket) => {
 
 export class TerminalManager {
   private terminalMap: Map<WebSocket, Terminal> = new Map();
+  private readonly maxSize: number;
+
+  constructor(maxSize: number = 10) {
+    this.maxSize = maxSize;
+  }
 
   public getTerminal(identifier: number, ws: WebSocket) {
     let terminal = this.terminalMap.get(ws);
     if (terminal) {
+      this.terminalMap.delete(ws);
       terminal.identifier = identifier;
       terminal.onData = (data: string) => onPtyData(data, terminal!, ws);
+      this.terminalMap.set(ws, terminal);
       return terminal;
     }
+
+    if (this.terminalMap.size >= this.maxSize) {
+      this.evictLRU();
+    }
+
     terminal = new Terminal(identifier);
     terminal.onData = (data: string) => onPtyData(data, terminal, ws);
     this.terminalMap.set(ws, terminal);
     return terminal;
+  }
+
+  private evictLRU() {
+    const lruKey = this.terminalMap.keys().next().value;
+    if (lruKey !== undefined) {
+      const terminal = this.terminalMap.get(lruKey);
+      if (terminal) terminal.kill();
+      this.terminalMap.delete(lruKey);
+      lruKey.close();
+    }
   }
 
   public removeConnection(ws: WebSocket) {
