@@ -35,20 +35,28 @@ docker run -d --name ubuntu-gnome-vnc -p 5900:5900 ubuntu-gnome-vnc
 ## Docker 部署
 
 ```bash
-# 首次启动（自动构建镜像）
+# 首次启动（自动构建所有镜像）
 docker-compose up -d
 
-# 重新构建并重启
+# 重新构建并重启所有服务
 docker-compose up -d --build
+
+# 只重建 kooterm 服务，跳过 VNC 镜像构建
+#（VNC Dockerfile 无变动时走缓存，改动大时可先单独打 tag）
+docker build -f Dockerfile.ubuntu-xfce-vnc -t ubuntu-xfce-vnc .
+docker-compose up -d --build kooterm
 
 # 查看日志
 docker-compose logs -f
+
+# 仅查看 kooterm 日志
+docker-compose logs -f kooterm
 
 # 进入容器调试（基于 Ubuntu，支持 apt/sudo）
 docker exec -it kooterm bash
 ```
 
-访问 `http://localhost:53001` 即可打开终端。
+访问 `http://localhost:53001`（HTTP）或 `https://localhost:53443`（HTTPS，自签证书）即可打开终端。
 
 ## 开发
 
