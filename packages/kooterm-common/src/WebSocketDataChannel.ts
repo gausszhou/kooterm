@@ -1,5 +1,5 @@
-import { Frame, FrameCodec, FrameType } from '@kooterm/common';
-import { WebSocketConnection } from './WebSocketConnection';
+import { Frame, FrameCodec, FrameType } from './index.js';
+import { WebSocketConnection } from './WebSocketConnection.js';
 import { getLogger } from 'loglevel';
 
 const logger = getLogger('WebSocketDataChannel');

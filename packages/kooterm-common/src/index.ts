@@ -18,6 +18,10 @@
 import { FrameType } from './types.js';
 export * from './types.js';
 export * from './utils.js';
+export * from './WebSocketConnection.js';
+export * from './WebSocketDataChannel.js';
+export * from './TcpProxy.js';
+export * from './http.js';
 
 // 不能使用 Buffer，因为 Buffer 是 Node.js 中的一个类，浏览器中没有这个类
 // 使用 DataView 和 TypedArray 确保浏览器和 Node.js 行为一致

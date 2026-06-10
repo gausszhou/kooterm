@@ -3,9 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { ClipboardAddon } from '@xterm/addon-clipboard';
-import { Frame, FrameType } from '@kooterm/common';
-import { WebSocketConnection } from '@/modules/WebSocketConnection';
-import { WebSocketDataChannel } from '@/modules/WebSocketDataChannel';
+import { Frame, FrameType, WebSocketConnection, WebSocketDataChannel } from '@kooterm/common';
 import { useXTermClipboard } from '@/hooks/useXTermClipboard';
 
 export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {

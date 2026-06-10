@@ -1,8 +1,7 @@
 import { ref, shallowRef, type Ref } from 'vue';
 import RFB from '@novnc/novnc/lib/rfb';
 import { FrameCodec, FrameType } from '@kooterm/common';
-import { WebSocketConnection } from '@/modules/WebSocketConnection';
-import { WebSocketDataChannel } from '@/modules/WebSocketDataChannel';
+import { WebSocketConnection, WebSocketDataChannel } from '@kooterm/common';
 import { useRFBClipboard } from '@/hooks/useRFBClipbaord';
 import { getLogger } from 'loglevel';
 
