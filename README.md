@@ -10,7 +10,7 @@ KooTerm - Web 终端和 Web VNC 技术调研
 
 ## 部署 VNC
 
-VNC 镜像预装了 `fastfetch`、`btop` 等工具。
+VNC 镜像预装了 `btop` 等工具。
 
 ### 预构建镜像
 
@@ -30,6 +30,11 @@ docker run -d --name ubuntu-xfce-vnc -p 5900:5900 ubuntu-xfce-vnc
 docker build -f Dockerfile.ubuntu-gnome-vnc -t ubuntu-gnome-vnc .
 docker run -d --name ubuntu-gnome-vnc -p 5900:5900 ubuntu-gnome-vnc
 ## VNC 连接 localhost:5900，密码 vncpassword
+
+# debian-xfce-vnc
+docker build -f Dockerfile.debian-xfce-vnc -t debian-xfce-vnc .
+docker run -d --name debian-xfce-vnc -p 5900:5901 -e VNC_RESOLUTION=1280x720 debian-xfce-vnc
+## VNC 连接 localhost:5900，密码 vncpassword
 ```
 
 ## Docker 部署
@@ -43,7 +48,7 @@ docker-compose up -d --build
 
 # 只重建 kooterm 服务，跳过 VNC 镜像构建
 #（VNC Dockerfile 无变动时走缓存，改动大时可先单独打 tag）
-docker build -f Dockerfile.ubuntu-xfce-vnc -t ubuntu-xfce-vnc .
+docker build -f Dockerfile.debian-xfce-vnc -t debian-xfce-vnc .
 docker-compose up -d --build kooterm
 
 # 查看日志

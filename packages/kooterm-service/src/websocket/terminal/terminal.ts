@@ -1,64 +1,134 @@
-import { spawn, IPty } from 'node-pty';
+import { Client, ClientChannel } from 'ssh2';
+import loglevel from 'loglevel';
 
-const shell = (): string => {
-  if (process.env.SHELL) return process.env.SHELL;
-  if (process.platform === 'win32') return 'powershell.exe';
-  return 'bash';
-};
+const logger = loglevel.getLogger('SSH');
 
-const defaultCwd = (): string => {
-  if (process.env.HOME) return process.env.HOME;
-  if (process.env.USERPROFILE) return process.env.USERPROFILE;
-  return '/root';
-};
+export interface SshConfig {
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+}
 
 export class Terminal {
-  public identifier: number;
-  private pty: IPty;
-  private cols = 80;
-  private rows = 24;
+  private ssh: Client;
+  public sessionId: string;
+  public shell: ClientChannel | null = null;
+  public onData: ((data: string) => void) | null = null;
 
-  constructor(identifier: number) {
-    this.identifier = identifier;
-    this.pty = this.createPty();
-    this.pty.onData(this.onData.bind(this));
+  constructor(sessionId: string) {
+    this.sessionId = sessionId;
+    this.ssh = new Client();
   }
 
-  private createPty(): IPty {
-    return spawn(shell(), [], {
-      name: 'xterm-256color',
-      cols: this.cols,
-      rows: this.rows,
-      cwd: defaultCwd(),
-      env: { TERM: 'xterm-256color', ...process.env } as { [key: string]: string },
+  init(config: SshConfig): Promise<void> {
+    logger.info(`[${this.sessionId}] SSH connecting to ${config.host}:${config.port} as ${config.username}`);
+    return new Promise((resolve, reject) => {
+      if (this.ssh) this.ssh.end();
+      this.ssh = new Client();
+
+      this.ssh.on('ready', () => {
+        logger.info(`[${this.sessionId}] SSH connected, opening shell...`);
+        this.ssh.shell({ term: 'xterm-256color' }, (err, channel) => {
+          if (err) {
+            logger.error(`[${this.sessionId}] shell() error:`, err);
+            reject(err);
+            return;
+          }
+          this.shell = channel;
+          logger.info(`[${this.sessionId}] Shell opened`);
+
+          channel.stderr.on('data', (data: Buffer) => {
+            logger.debug(`[${this.sessionId}] Shell stderr:`, data.toString('utf-8'));
+            this.onData?.(data.toString('utf-8'));
+          });
+
+          channel.on('data', (data: Buffer) => {
+            this.onData?.(data.toString('utf-8'));
+          });
+
+          channel.on('close', () => {
+            logger.info(`[${this.sessionId}] Shell closed`);
+            this.shell = null;
+          });
+
+          resolve();
+        });
+      });
+
+      this.ssh.on('error', (err) => {
+        logger.error(`[${this.sessionId}] SSH error:`, err);
+        reject(err);
+      });
+
+      this.ssh.on('end', () => {
+        logger.info(`[${this.sessionId}] SSH end`);
+      });
+
+      this.ssh.connect({
+        host: config.host,
+        port: config.port,
+        username: config.username,
+        password: config.password,
+        readyTimeout: 10000,
+      });
+      logger.info(`[${this.sessionId}] SSH connect() called`);
     });
   }
 
-  init() {
-    if (this.pty) this.pty.kill();
-    this.pty = this.createPty();
-    this.pty.onData(this.onData.bind(this));
-  }
-
-  refresh() {
-    this.init();
-  }
-
   write(data: string) {
-    this.pty.write(data);
+    this.shell?.write(data);
   }
 
   resize(cols: number, rows: number) {
-    this.cols = cols;
-    this.rows = rows;
-    this.pty.resize(cols, rows);
+    this.shell?.setWindow(rows, cols, 0, 0);
   }
 
   kill() {
-    if (this.pty) this.pty.kill();
+    if (this.shell) {
+      this.shell.close();
+      this.shell = null;
+    }
+    this.ssh.end();
   }
 
-  onData(data: string): void {
-    // TODO Override
+  openShell(config: SshConfig): Promise<void> {
+    logger.info(`[${this.sessionId}] Opening new shell (refresh)...`);
+    return new Promise((resolve, reject) => {
+      if (this.shell) {
+        this.shell.close();
+        this.shell = null;
+      }
+
+      this.ssh.shell({ term: 'xterm-256color' }, (err, channel) => {
+        if (err) {
+          logger.error(`[${this.sessionId}] openShell() error:`, err);
+          reject(err);
+          return;
+        }
+        this.shell = channel;
+        logger.info(`[${this.sessionId}] New shell opened (refresh)`);
+
+        channel.stderr.on('data', (data: Buffer) => {
+          logger.debug(`[${this.sessionId}] Shell stderr:`, data.toString('utf-8'));
+          this.onData?.(data.toString('utf-8'));
+        });
+
+        channel.on('data', (data: Buffer) => {
+          this.onData?.(data.toString('utf-8'));
+        });
+
+        channel.on('close', () => {
+          logger.info(`[${this.sessionId}] Shell closed (refresh)`);
+          this.shell = null;
+        });
+
+        resolve();
+      });
+    });
+  }
+
+  get isConnected(): boolean {
+    return this.ssh && this.shell !== null;
   }
 }

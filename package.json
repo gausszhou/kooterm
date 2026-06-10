@@ -23,7 +23,7 @@
     "packages/*"
   ],
   "pnpm": {
-    "onlyBuiltDependencies": ["node-pty"]
+    "onlyBuiltDependencies": ["ssh2", "cpu-features"]
   },
   "keywords": [
     "monorepo",
