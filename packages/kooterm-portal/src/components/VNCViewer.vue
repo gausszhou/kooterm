@@ -22,7 +22,7 @@
 import Loading from '@/components/Loading.vue';
 import NetworkInfo from '@/components/NetworkInfo.vue';
 import { onMounted, onUnmounted, ref } from 'vue';
-import { useVnc } from '@/hooks/useVnc';
+import { useRfb } from '@/hooks/useRfb';
 
 const props = defineProps({
   url: {
@@ -32,7 +32,7 @@ const props = defineProps({
 });
 
 const screenRef = ref<HTMLDivElement>();
-const { connected, connecting, networkRef, connection, init, destroy } = useVnc(screenRef);
+const { connected, connecting, networkRef, connection, init, destroy } = useRfb(screenRef);
 
 onMounted(() => {
   init(props.url);
