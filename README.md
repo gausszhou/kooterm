@@ -10,7 +10,7 @@ KooTerm - Web 终端和 Web VNC 技术调研
 
 ## 部署 VNC
 
-VNC 镜像预装了 `btop` 等工具。
+VNC 镜像预装了 `neofetch`、`btop` 等工具。
 
 ### 预构建镜像
 

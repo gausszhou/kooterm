@@ -40,19 +40,19 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
   }
 
   const sendResize = (cols?: number, rows?: number) => {
-    if (!terminal || !channel) return;
+    if (!terminal || !channel || channel.readyState !== WebSocket.OPEN) return;
     cols ??= terminal.cols;
     rows ??= terminal.rows;
     const buffer = new Uint8Array(4);
     const view = new DataView(buffer.buffer);
     view.setUint16(0, cols);
     view.setUint16(2, rows);
-    try { channel._send(FrameType.TERMINAL_RESIZE, buffer); } catch (e) { console.error('TERMINAL_RESIZE send failed:', e); }
+    channel._send(FrameType.TERMINAL_RESIZE, buffer);
   };
 
   const onData = (data: string) => {
-    if (!channel) return;
-    try { channel._send(FrameType.TERMINAL_DATA, data); } catch (e) { console.error('TERMINAL_DATA send failed:', e); }
+    if (!channel || channel.readyState !== WebSocket.OPEN) return;
+    channel._send(FrameType.TERMINAL_DATA, data);
   };
 
   const onConnectionTimeout = (url: string) => {
@@ -63,9 +63,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     connected.value = true;
     connecting.value = false;
     networkRef.value?.updateState();
-    fitAddon.fit();
     try { channel._send(FrameType.TERMINAL_INIT, getSessionId()); } catch (e) { console.error('TERMINAL_INIT send failed:', e); }
-    sendResize();
   };
 
   const onChannelClose = () => {
@@ -78,6 +76,11 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     if (frame.type === FrameType.TERMINAL_DATA) {
       const text = new TextDecoder().decode(frame.payload);
       terminal.write(text);
+    } else if (frame.type === FrameType.TERMINAL_INIT || frame.type === FrameType.TERMINAL_REFRESH) {
+      requestAnimationFrame(() => {
+        fitAddon.fit();
+        sendResize();
+      });
     }
   };
 
@@ -142,13 +145,9 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
   };
 
   const refresh = () => {
-    if (!terminal || !channel) return;
+    if (!terminal || !channel || channel.readyState !== WebSocket.OPEN) return;
     terminal.reset();
     channel._send(FrameType.TERMINAL_REFRESH, getSessionId());
-    requestAnimationFrame(() => {
-      fitAddon.fit();
-      sendResize();
-    });
   };
 
   const init = (url: string) => {
