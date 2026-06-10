@@ -1,4 +1,4 @@
-import { ref, computed, type Ref } from 'vue';
+import { ref, shallowRef, computed, type Ref } from 'vue';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
@@ -25,7 +25,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
 
   let terminal: Terminal;
   let fitAddon: FitAddon;
-  let connection: WebSocketConnection;
+  const connection = shallowRef<WebSocketConnection>();
   let channel: WebSocketDataChannel;
   let resizeObs: ResizeObserver;
   let resizeDisposable: { dispose: () => void };
@@ -47,7 +47,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
   };
 
   const onConnectionTimeout = (url: string) => {
-    connection.reconnect(url);
+    connection.value?.reconnect(url);
   };
 
   const onChannelOpen = () => {
@@ -114,10 +114,10 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
 
   const initWebSocket = (url: string) => {
     connecting.value = true;
-    connection = new WebSocketConnection(url);
+    connection.value = new WebSocketConnection(url);
 
-    connection.addEventListener('timeout', () => onConnectionTimeout(url));
-    channel = connection.createDataChannel('default');
+    connection.value.addEventListener('timeout', () => onConnectionTimeout(url));
+    channel = connection.value.createDataChannel('default');
     channel.addEventListener('open', onChannelOpen);
     channel.addEventListener('close', onChannelClose);
     channel.addEventListener('message', onChannelMessage);
@@ -129,7 +129,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
       channel.removeEventListener('close', onChannelClose);
       channel.removeEventListener('message', onChannelMessage);
     }
-    if (connection) connection.close();
+    if (connection.value) connection.value.close();
   };
 
   const refresh = () => {
