@@ -2,6 +2,10 @@ import { Frame, FrameCodec, FrameType } from '@kooterm/common';
 import WebSocket from 'ws';
 import { TcpProxySocket } from './tcp.js';
 
+export const isTcpMessage = (frame: Frame) => {
+  return frame.type === FrameType.TCP_INIT || frame.type === FrameType.TCP_DATA;
+};
+
 export class TcpManager {
   private tcpMap = new Map<number, TcpProxySocket>();
 
