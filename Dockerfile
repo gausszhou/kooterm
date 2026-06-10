@@ -22,7 +22,8 @@ FROM ubuntu:24.04 AS runner
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    echo "deb http://archive.ubuntu.com/ubuntu noble universe" > /etc/apt/sources.list.d/universe.list \
+    sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true \
+    && echo "deb http://mirrors.aliyun.com/ubuntu noble universe" > /etc/apt/sources.list.d/universe.list \
     && apt-get update && apt-get install -y --no-install-recommends \
     curl \
     sudo \
