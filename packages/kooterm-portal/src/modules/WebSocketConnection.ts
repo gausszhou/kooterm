@@ -260,6 +260,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     const pingTime = FrameCodec.buffer2number(frame.payload);
     this._lastPongTimestamp = Date.now();
     this._rtt = this._lastPongTimestamp - pingTime;
+    console.log(`[Network] RTT: ${this._rtt}ms`);
     const event = new Event('pong', {});
     this.dispatchEvent(event);
     this.getAllDataChannels().forEach(channel => {
