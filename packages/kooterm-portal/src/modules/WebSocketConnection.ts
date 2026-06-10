@@ -247,8 +247,9 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
   private _onClose(ev: CloseEvent) {
     this.isConnected = false;
     this._stopKeepAlive();
+    const event = new CloseEvent('close', { code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
     this.getAllDataChannels().forEach(channel => {
-      channel.dispatchEvent(ev);
+      channel.dispatchEvent(event);
     });
   }
 
