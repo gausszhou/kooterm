@@ -29,7 +29,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     dbus-x11 \
     tigervnc-standalone-server \
     tigervnc-tools \
-    fastfetch \
     btop \
     && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata \

@@ -34,7 +34,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     sudo \
     ca-certificates \
     locales \
-    fastfetch \
     btop \
     && locale-gen en_US.UTF-8 \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
