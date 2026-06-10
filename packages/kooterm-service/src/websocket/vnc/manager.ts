@@ -1,8 +1,20 @@
 import { Frame, FrameCodec, FrameType } from '@kooterm/common';
 import WebSocket from 'ws';
+import loglevel from 'loglevel';
 import { VNCServerSocket } from './vnc.js';
 
-const onVncData = (data: Uint8Array, socket: VNCServerSocket, ws: WebSocket) => {
+const logger = loglevel.getLogger('VNC');
+
+export const onVncInit = (frame: Frame, socket: VNCServerSocket) => {
+  logger.debug(frame.identifier, '收到 VNC_INIT 帧:', frame.payloadLength);
+};
+
+export const onVncData = (frame: Frame, socket: VNCServerSocket) => {
+  logger.debug(frame.identifier, '收到 VNC_DATA 帧:', frame.payloadLength);
+  socket.write(frame.payload);
+};
+
+const onVncReply = (data: Uint8Array, socket: VNCServerSocket, ws: WebSocket) => {
   let payload: Uint8Array;
   if (typeof data === 'string') {
     payload = new TextEncoder().encode(data);
@@ -22,11 +34,11 @@ export class VNCManager {
     let vncSocket = this.vncMap.get(ws); // 每个连接对应一个 VncSocket
     if (vncSocket) {
       vncSocket.identifier = identifier;
-      vncSocket.onData = data => onVncData(data, vncSocket!, ws);
+      vncSocket.onData = data => onVncReply(data, vncSocket!, ws);
       return vncSocket;
     }
     vncSocket = new VNCServerSocket(ws, identifier);
-    vncSocket.onData = data => onVncData(data, vncSocket, ws);
+    vncSocket.onData = data => onVncReply(data, vncSocket, ws);
     this.vncMap.set(ws, vncSocket);
     return vncSocket;
   }

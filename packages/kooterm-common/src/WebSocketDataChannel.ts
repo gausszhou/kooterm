@@ -23,6 +23,15 @@ export class WebSocketDataChannel extends EventTarget implements WebSocket {
     this.label = label;
   }
 
+  addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) {
+    super.addEventListener(type, listener, options);
+    if (type === 'open' && this.connection.isConnected) {
+      const event = new Event('open', {});
+      this._onopen(event);
+      this.dispatchEvent(event);
+    }
+  }
+
   set binaryType(type: BinaryType) {
     this.connection.binaryType = type;
   }

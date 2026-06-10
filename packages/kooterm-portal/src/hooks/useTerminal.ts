@@ -31,10 +31,10 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
   let resizeDisposable: { dispose: () => void };
 
   function getSessionId(): string {
-    let id = localStorage.getItem(SESSION_KEY);
+    let id = sessionStorage.getItem(SESSION_KEY);
     if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(SESSION_KEY, id);
+      id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem(SESSION_KEY, id);
     }
     return id;
   }
@@ -47,12 +47,12 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     const view = new DataView(buffer.buffer);
     view.setUint16(0, cols);
     view.setUint16(2, rows);
-    try { channel._send(FrameType.TERMINAL_RESIZE, buffer); } catch {}
+    try { channel._send(FrameType.TERMINAL_RESIZE, buffer); } catch (e) { console.error('TERMINAL_RESIZE send failed:', e); }
   };
 
   const onData = (data: string) => {
     if (!channel) return;
-    try { channel._send(FrameType.TERMINAL_DATA, data); } catch {}
+    try { channel._send(FrameType.TERMINAL_DATA, data); } catch (e) { console.error('TERMINAL_DATA send failed:', e); }
   };
 
   const onConnectionTimeout = (url: string) => {
@@ -64,7 +64,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     connecting.value = false;
     networkRef.value?.updateState();
     fitAddon.fit();
-    try { channel._send(FrameType.TERMINAL_INIT, getSessionId()); } catch {}
+    try { channel._send(FrameType.TERMINAL_INIT, getSessionId()); } catch (e) { console.error('TERMINAL_INIT send failed:', e); }
     sendResize();
   };
 
