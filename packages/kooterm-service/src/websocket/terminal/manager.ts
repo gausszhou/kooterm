@@ -71,15 +71,16 @@ export class TerminalManager {
       terminal.onData = (data: string) => onTerminalData(data, terminal!, ws, identifier);
       this.sessions.set(sessionId, terminal);
       logger.info(identifier, `[${sessionId}] 开始 SSH 连接 ${SSH_HOST}:${SSH_PORT} 用户=${SSH_USER}`);
-      terminal.init(sshConfig()).then(() => {
-        logger.info(identifier, `[${sessionId}] SSH 连接成功`);
-      }).catch(err => {
-        logger.error(identifier, `[${sessionId}] SSH 连接失败:`, err);
-        this.sessions.delete(sessionId);
-      });
+      await terminal.init(sshConfig());
+      logger.info(identifier, `[${sessionId}] SSH 连接成功`);
     } else {
       terminal.onData = (data: string) => onTerminalData(data, terminal!, ws, identifier);
-      logger.debug(identifier, `[${sessionId}] 复用已有会话`);
+      if (!terminal.shell) {
+        logger.info(identifier, `[${sessionId}] Shell 已关闭，重新打开`);
+        await terminal.openShell(sshConfig());
+      } else {
+        logger.debug(identifier, `[${sessionId}] 复用已有会话`);
+      }
     }
 
     return terminal;

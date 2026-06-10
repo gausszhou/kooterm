@@ -2,7 +2,7 @@ FROM consol/debian-xfce-vnc
 
 USER 0
 
-RUN apt-get update && apt-get install -y openssh-server sudo btop \
+RUN apt-get update && apt-get install -y openssh-server sudo btop neofetch \
     && mkdir -p /var/run/sshd \
     && echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config \
     && echo "PermitRootLogin yes" >> /etc/ssh/sshd_config \
