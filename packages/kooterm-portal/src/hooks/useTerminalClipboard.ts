@@ -3,9 +3,9 @@ import { Terminal } from '@xterm/xterm';
 /**
  * XTerm Copy/Paste support
  * https://github.com/xtermjs/xterm.js/issues/2478
- * @param terminal 
+ * @param terminal
  */
-export function useXTermClipboard(terminal: Terminal) {
+export function useTerminalClipboard(terminal: Terminal) {
   terminal.attachCustomKeyEventHandler(arg => {
     if (arg.type === 'keydown') {
       if (arg.ctrlKey && arg.shiftKey && arg.code === 'KeyC') {

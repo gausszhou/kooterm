@@ -2,12 +2,12 @@ import { ref, shallowRef, type Ref } from 'vue';
 import RFB from '@novnc/novnc/lib/rfb';
 import { FrameCodec, FrameType } from '@kooterm/common';
 import { WebSocketConnection, WebSocketDataChannel } from '@kooterm/common';
-import { useRFBClipboard } from '@/hooks/useRFBClipbaord';
+import { useRfbClipboard } from '@/hooks/useRfbClipboard';
 import { getLogger } from 'loglevel';
 
-const logger = getLogger('useVnc');
+const logger = getLogger('useRfb');
 
-export function useVnc(screenRef: Ref<HTMLElement | undefined>) {
+export function useRfb(screenRef: Ref<HTMLElement | undefined>) {
   const connected = ref(false);
   const connecting = ref(false);
   const networkRef = ref();
@@ -73,7 +73,7 @@ export function useVnc(screenRef: Ref<HTMLElement | undefined>) {
           target: 'default'
         }
       });
-      rfbClipboardClear = useRFBClipboard(rfb);
+      rfbClipboardClear = useRfbClipboard(rfb);
       rfb.addEventListener('connect', onConnect);
       rfb.addEventListener('disconnect', onDisconnect);
       rfb.addEventListener('credentialsrequired', onCredentialsRequired);
