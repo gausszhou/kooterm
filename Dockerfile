@@ -22,7 +22,7 @@ FROM ubuntu:24.04 AS runner
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    sed -i '/^Components: main restricted$/s/$/ universe/' /etc/apt/sources.list.d/ubuntu.sources \
+    echo "deb http://archive.ubuntu.com/ubuntu noble universe" > /etc/apt/sources.list.d/universe.list \
     && apt-get update && apt-get install -y --no-install-recommends \
     curl \
     sudo \
