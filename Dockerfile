@@ -25,10 +25,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && locale-gen en_US.UTF-8 \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb -o /tmp/fastfetch.deb \
-    && dpkg -i /tmp/fastfetch.deb \
-    && rm -f /tmp/fastfetch.deb \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+
+RUN curl -fsSL -o /tmp/fastfetch.deb https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb \
+    && dpkg -i /tmp/fastfetch.deb \
+    && rm -f /tmp/fastfetch.deb
 
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
