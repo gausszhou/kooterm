@@ -14,22 +14,27 @@ const props = defineProps({
   }
 });
 
-let state = reactive(createNetworkInfo());
-let timer = 0;
+const state = reactive(createNetworkInfo());
 
 const updateState = () => {
   state.rtt = props.connection.rtt;
 };
 
+const onPong = () => {
+  updateState();
+};
+
 onMounted(() => {
   updateState();
-  timer = setInterval(() => {
-    updateState();
-  }, 1000);
+  if (props.connection && typeof props.connection.addEventListener === 'function') {
+    props.connection.addEventListener('pong', onPong);
+  }
 });
 
 onUnmounted(() => {
-  clearInterval(timer);
+  if (props.connection && typeof props.connection.removeEventListener === 'function') {
+    props.connection.removeEventListener('pong', onPong);
+  }
 });
 
 defineExpose({
