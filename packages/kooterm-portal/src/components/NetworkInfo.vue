@@ -6,7 +6,7 @@
 
 <script lang="ts" setup>
 import { createNetworkInfo } from '@/modules/WebSocketConnection';
-import { onMounted, onUnmounted, reactive } from 'vue';
+import { reactive, watch } from 'vue';
 
 const props = defineProps({
   connection: {
@@ -24,18 +24,15 @@ const onPong = () => {
   updateState();
 };
 
-onMounted(() => {
+watch(() => props.connection, (conn, oldConn) => {
+  if (oldConn && typeof oldConn.removeEventListener === 'function') {
+    oldConn.removeEventListener('pong', onPong);
+  }
+  if (conn && typeof conn.addEventListener === 'function') {
+    conn.addEventListener('pong', onPong);
+  }
   updateState();
-  if (props.connection && typeof props.connection.addEventListener === 'function') {
-    props.connection.addEventListener('pong', onPong);
-  }
-});
-
-onUnmounted(() => {
-  if (props.connection && typeof props.connection.removeEventListener === 'function') {
-    props.connection.removeEventListener('pong', onPong);
-  }
-});
+}, { immediate: true });
 
 defineExpose({
   updateState
