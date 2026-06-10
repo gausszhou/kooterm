@@ -26,7 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dbus-x11 \
     tigervnc-standalone-server \
     tigervnc-tools \
+    btop \
     && apt-get autoremove -y \
+    && curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb -o /tmp/fastfetch.deb \
+    && dpkg -i /tmp/fastfetch.deb \
+    && rm -f /tmp/fastfetch.deb \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale/{??,??_??}/* /var/log/* \
     && useradd -m -s /bin/bash -G sudo user \
     && echo "user:user" | chpasswd \
