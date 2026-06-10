@@ -10,7 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends \
+    sed -i '/^Components: main restricted$/s/$/ universe/' /etc/apt/sources.list.d/ubuntu.sources \
+    && apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     ca-certificates \
     curl \
@@ -22,6 +23,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     dbus-x11 \
     tigervnc-standalone-server \
     tigervnc-tools \
+    fastfetch \
     btop \
     && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata \
@@ -35,9 +37,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && echo "vncpassword" | tigervncpasswd -f > /home/user/.vnc/passwd \
     && chmod 600 /home/user/.vnc/passwd \
     && chown -R user:user /home/user/.vnc
-
-ADD https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb /tmp/fastfetch.deb
-RUN dpkg -i /tmp/fastfetch.deb && rm -f /tmp/fastfetch.deb
 
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 

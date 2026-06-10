@@ -18,23 +18,22 @@ COPY . .
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm build
 
-FROM ubuntu:22.04 AS runner
+FROM ubuntu:24.04 AS runner
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    apt-get update && apt-get install -y --no-install-recommends \
+    sed -i '/^Components: main restricted$/s/$/ universe/' /etc/apt/sources.list.d/ubuntu.sources \
+    && apt-get update && apt-get install -y --no-install-recommends \
     curl \
     sudo \
     ca-certificates \
     locales \
+    fastfetch \
     btop \
     && locale-gen en_US.UTF-8 \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /usr/share/doc /usr/share/man /usr/share/info
-
-ADD https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb /tmp/fastfetch.deb
-RUN dpkg -i /tmp/fastfetch.deb && rm -f /tmp/fastfetch.deb
 
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
