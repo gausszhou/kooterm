@@ -8,7 +8,6 @@ export default defineConfig({
       fileName: 'index'
     },
     rollupOptions: {
-      external: ['loglevel'],
       output: {
         exports: 'named'
       }

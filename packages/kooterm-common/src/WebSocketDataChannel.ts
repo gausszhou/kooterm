@@ -1,9 +1,6 @@
 import { Frame, FrameCodec, FrameType } from './index.js';
 import { WebSocketConnection } from './WebSocketConnection.js';
-import { getLogger } from 'loglevel';
-
-const logger = getLogger('WebSocketDataChannel');
-logger.setLevel('debug');
+import { log } from './logger.js';
 
 export class WebSocketDataChannel extends EventTarget implements WebSocket {
   readonly CONNECTING = WebSocket.CONNECTING;

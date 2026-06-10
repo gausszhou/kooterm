@@ -28,9 +28,6 @@
   ],
   "author": "KooTerm Team",
   "license": "MIT",
-  "dependencies": {
-    "loglevel": "^1.9.2"
-  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsc": "^2.0.4",

@@ -12,6 +12,17 @@ import { VNCServerSocket } from './vnc/vnc.js';
 const logger = loglevel.getLogger('WebSocketServer');
 logger.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || 'info');
 
+function getClientIp(req: http.IncomingMessage): string {
+  const xff = req.headers['x-forwarded-for'];
+  if (typeof xff === 'string') {
+    const first = xff.split(',')[0].trim();
+    if (first) return first;
+  }
+  const xri = req.headers['x-real-ip'];
+  if (typeof xri === 'string' && xri) return xri;
+  return req.socket.remoteAddress || 'unknown';
+}
+
 const onTerminalInit = (frame: Frame, terminal: Terminal) => {
   logger.debug(frame.identifier, '收到 TERMINAL_INIT 帧:', frame.payloadLength);
   terminal.init();
@@ -99,7 +110,7 @@ export function useWebSocket(server: http.Server | http.Server[]) {
     });
   });
   wss.addListener('headers', (headers, req) => {
-    logger.debug('WebSocket请求头:', req.socket.remoteAddress, headers);
+    logger.debug('WebSocket请求头:', getClientIp(req), headers);
   });
   wss.addListener('listening', () => {
     logger.info('WebSocket服务器已启动，等待客户端连接...');
@@ -108,7 +119,7 @@ export function useWebSocket(server: http.Server | http.Server[]) {
   const vncManager = new VNCManager();
   // WebSocket连接处理
   wss.addListener('connection', (ws: WebSocket, req) => {
-    logger.info('用户连接:', req.socket.remoteAddress);
+    logger.info('用户连接:', getClientIp(req));
 
     ws.on('message', (message: ArrayBuffer) => {
       const frame = FrameCodec.decode(message);
@@ -146,7 +157,7 @@ export function useWebSocket(server: http.Server | http.Server[]) {
     });
 
     ws.addEventListener('close', () => {
-      logger.info('用户断开连接:', req.socket.remoteAddress);
+      logger.info('用户断开连接:', getClientIp(req));
       for (const [id, socket] of tcpSockets) {
         socket.end();
         tcpSockets.delete(id);

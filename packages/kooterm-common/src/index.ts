@@ -18,6 +18,7 @@
 import { FrameType } from './types.js';
 export * from './types.js';
 export * from './utils.js';
+export * from './logger.js';
 export * from './WebSocketConnection.js';
 export * from './WebSocketDataChannel.js';
 export * from './TcpProxy.js';
