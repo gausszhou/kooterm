@@ -10,8 +10,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    sed -i 's|http://archive.ubuntu.com/ubuntu|http://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true \
-    && echo "deb http://mirrors.aliyun.com/ubuntu noble universe" > /etc/apt/sources.list.d/universe.list \
+    rm -f /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/universe.list \
+    && cat > /etc/apt/sources.list <<SOURCES \
+deb http://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse \
+deb http://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse \
+deb http://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse \
+deb http://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse \
+SOURCES \
     && apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     ca-certificates \
