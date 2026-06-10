@@ -1,13 +1,12 @@
 import http from 'http';
-import net from 'net';
 import WebSocket, { WebSocketServer } from 'ws';
 import loglevel, { LogLevelDesc } from 'loglevel';
 import { Frame, FrameCodec, FrameType } from '@kooterm/common';
-import { Terminal } from './terminal/terminal.js';
-import { isEcho, onEcho } from './echo/index.js';
-import { isTerminal, TerminalManager } from './terminal/useTerminal.js';
-import { isVncMessage, VNCManager } from './vnc/useVnc.js';
+import { isEcho, onEcho } from './echo.js';
+import { isTerminal, TerminalManager } from './terminal/manager.js';
+import { isVncMessage, VNCManager } from './vnc/manager.js';
 import { VNCServerSocket } from './vnc/vnc.js';
+import { TcpManager } from './tcp/manager.js';
 
 const logger = loglevel.getLogger('WebSocketServer');
 logger.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || 'info');
@@ -23,28 +22,9 @@ function getClientIp(req: http.IncomingMessage): string {
   return req.socket.remoteAddress || 'unknown';
 }
 
-const onTerminalInit = (frame: Frame, terminal: Terminal) => {
-  logger.debug(frame.identifier, '收到 TERMINAL_INIT 帧:', frame.payloadLength);
-  terminal.init();
-};
-
-const onTerminalRefresh = (frame: Frame, terminal: Terminal) => {
-  logger.debug(frame.identifier, '收到 TERMINAL_REFRESH 帧:', frame.payloadLength);
-  terminal.refresh();
-};
-
-const onTerminalData = (frame: Frame, terminal: Terminal) => {
-  const input = new TextDecoder().decode(frame.payload);
-  logger.debug(frame.identifier, '收到 TERMINAL_DATA 帧:', frame.payloadLength);
-  terminal.write(input);
-};
-
-const onTerminalResize = (frame: Frame, terminal: Terminal) => {
-  const cols = frame.payload[0] << 8 | frame.payload[1];
-  const rows = frame.payload[2] << 8 | frame.payload[3];
-  logger.info(frame.identifier, '收到 TERMINAL_RESIZE 帧: cols=' + cols + ' rows=' + rows + ' payload=[' + Array.from(frame.payload).join(',') + ']');
-  terminal.resize(cols, rows);
-};
+const terminalManager = new TerminalManager(Number(process.env.SSH_MAX) || 5);
+const vncManager = new VNCManager();
+const tcpManager = new TcpManager();
 
 const onVncInit = (frame: Frame, socket: VNCServerSocket) => {
   logger.debug(frame.identifier, '收到 VNC_INIT 帧:', frame.payloadLength);
@@ -53,50 +33,6 @@ const onVncInit = (frame: Frame, socket: VNCServerSocket) => {
 const onVncData = (frame: Frame, socket: VNCServerSocket) => {
   logger.debug(frame.identifier, '收到 VNC_DATA 帧:', frame.payloadLength);
   socket.write(frame.payload);
-};
-
-const tcpSockets = new Map<number, net.Socket>();
-
-const onTcpInit = (ws: WebSocket, frame: Frame) => {
-  const { host, port } = FrameCodec.decodeTarget(frame.payload);
-  logger.debug(frame.identifier, `TCP 代理: ${host}:${port}`);
-
-  const existing = tcpSockets.get(frame.identifier);
-  if (existing) {
-    existing.end();
-    tcpSockets.delete(frame.identifier);
-  }
-
-  const socket = net.createConnection({ host, port });
-  tcpSockets.set(frame.identifier, socket);
-
-  socket.on('connect', () => {
-    logger.debug(frame.identifier, 'TCP 连接成功');
-  });
-
-  socket.on('data', (data: Uint8Array) => {
-    const out = FrameCodec.create(FrameType.TCP_DATA, frame.identifier, data);
-    ws.send(out.toBuffer());
-  });
-
-  socket.on('close', () => {
-    tcpSockets.delete(frame.identifier);
-    ws.close();
-  });
-
-  socket.on('error', err => {
-    logger.debug('TCP 错误:', err);
-    socket.end();
-    tcpSockets.delete(frame.identifier);
-    ws.close();
-  });
-};
-
-const onTcpData = (frame: Frame) => {
-  const socket = tcpSockets.get(frame.identifier);
-  if (socket) {
-    socket.write(frame.payload);
-  }
 };
 
 export function useWebSocket(server: http.Server | http.Server[]) {
@@ -115,9 +51,6 @@ export function useWebSocket(server: http.Server | http.Server[]) {
   wss.addListener('listening', () => {
     logger.info('WebSocket服务器已启动，等待客户端连接...');
   });
-  const terminalManager = new TerminalManager(Number(process.env.TERMINAL_MAX) || 10);
-  const vncManager = new VNCManager();
-  // WebSocket连接处理
   wss.addListener('connection', (ws: WebSocket, req) => {
     logger.info('用户连接:', getClientIp(req));
 
@@ -126,15 +59,27 @@ export function useWebSocket(server: http.Server | http.Server[]) {
       if (isEcho(frame)) {
         onEcho(ws, frame);
       } else if (isTerminal(frame)) {
-        const terminal = terminalManager.getTerminal(frame.identifier, ws);
         if (frame.type === FrameType.TERMINAL_INIT) {
-          onTerminalInit(frame, terminal);
-        } else if (frame.type === FrameType.TERMINAL_REFRESH) {
-          onTerminalRefresh(frame, terminal);
-        } else if (frame.type === FrameType.TERMINAL_DATA) {
-          onTerminalData(frame, terminal);
-        } else if (frame.type === FrameType.TERMINAL_RESIZE) {
-          onTerminalResize(frame, terminal);
+          const sessionId = new TextDecoder().decode(frame.payload);
+          logger.debug(frame.identifier, 'TERMINAL_INIT session:', sessionId);
+          terminalManager.initSession(sessionId, ws, frame.identifier)
+            .catch(err => logger.error('SSH init failed:', err));
+        } else {
+          const sid = terminalManager.getSessionId(ws, frame.identifier);
+          if (!sid) return;
+          if (frame.type === FrameType.TERMINAL_REFRESH) {
+            logger.debug(frame.identifier, 'TERMINAL_REFRESH session:', sid);
+            terminalManager.openShell(sid).catch(err => logger.error('SSH refresh failed:', err));
+          } else if (frame.type === FrameType.TERMINAL_DATA) {
+            const input = new TextDecoder().decode(frame.payload);
+            const terminal = terminalManager.getSession(sid);
+            if (terminal) terminal.write(input);
+          } else if (frame.type === FrameType.TERMINAL_RESIZE) {
+            const cols = frame.payload[0] << 8 | frame.payload[1];
+            const rows = frame.payload[2] << 8 | frame.payload[3];
+            const terminal = terminalManager.getSession(sid);
+            if (terminal) terminal.resize(cols, rows);
+          }
         }
       } else if (isVncMessage(frame)) {
         if (process.env.VNC_ENABLE !== 'true') {
@@ -148,9 +93,10 @@ export function useWebSocket(server: http.Server | http.Server[]) {
           onVncData(frame, vncSocket);
         }
       } else if (frame.type === FrameType.TCP_INIT) {
-        onTcpInit(ws, frame);
+        const { host, port } = FrameCodec.decodeTarget(frame.payload);
+        tcpManager.getOrCreate(ws, frame.identifier, host, port);
       } else if (frame.type === FrameType.TCP_DATA) {
-        onTcpData(frame);
+        tcpManager.write(frame.identifier, frame.payload);
       } else {
         logger.warn(frame.identifier, '收到未知帧类型:', FrameType[frame.type]);
       }
@@ -158,12 +104,9 @@ export function useWebSocket(server: http.Server | http.Server[]) {
 
     ws.addEventListener('close', () => {
       logger.info('用户断开连接:', getClientIp(req));
-      for (const [id, socket] of tcpSockets) {
-        socket.end();
-        tcpSockets.delete(id);
-      }
       terminalManager.removeConnection(ws);
       vncManager.removeConnection(ws);
+      tcpManager.removeConnection();
     });
   });
 }

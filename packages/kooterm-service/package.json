@@ -17,8 +17,8 @@
   "dependencies": {
     "@maximegris/node-websockify": "^1.0.7",
     "@kooterm/common": "workspace:*",
-    "node-pty": "^1.0.0",
     "dotenv": "^17.2.3",
+    "ssh2": "^1.15.0",
     "express": "^4.18.2",
     "loglevel": "^1.9.2",
     "ws": "^8.14.2"
@@ -26,6 +26,7 @@
   "devDependencies": {
     "@types/express": "^4.17.17",
     "@types/node": "^20.0.0",
+    "@types/ssh2": "^1.15.0",
     "@types/ws": "^8.5.5",
     "eslint": "^8.52.0",
     "nodemon": "^3.0.1",

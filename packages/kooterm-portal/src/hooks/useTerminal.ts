@@ -21,12 +21,23 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     return connected.value ? 'Connected' : 'Disconnected';
   });
 
+  const SESSION_KEY = 'kooterm_ssh_session';
+
   let terminal: Terminal;
   let fitAddon: FitAddon;
   const connection = shallowRef<WebSocketConnection>();
   let channel: WebSocketDataChannel;
   let resizeObs: ResizeObserver;
   let resizeDisposable: { dispose: () => void };
+
+  function getSessionId(): string {
+    let id = localStorage.getItem(SESSION_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  }
 
   const sendResize = (cols?: number, rows?: number) => {
     if (!terminal || !channel) return;
@@ -53,7 +64,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     connecting.value = false;
     networkRef.value?.updateState();
     fitAddon.fit();
-    try { channel._send(FrameType.TERMINAL_INIT, ''); } catch {}
+    try { channel._send(FrameType.TERMINAL_INIT, getSessionId()); } catch {}
     sendResize();
   };
 
@@ -133,7 +144,7 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
   const refresh = () => {
     if (!terminal || !channel) return;
     terminal.reset();
-    channel._send(FrameType.TERMINAL_REFRESH, '');
+    channel._send(FrameType.TERMINAL_REFRESH, getSessionId());
     requestAnimationFrame(() => {
       fitAddon.fit();
       sendResize();

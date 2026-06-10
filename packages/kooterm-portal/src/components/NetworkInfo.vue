@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts" setup>
-import { createNetworkInfo } from '@/modules/WebSocketConnection';
+import { createNetworkInfo } from '@kooterm/common';
 import { reactive, watch } from 'vue';
 
 const props = defineProps({

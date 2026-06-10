@@ -379,6 +379,8 @@ export function createNetworkInfo() {
     downBytes: 0,
     upSpeed: 0,
     downSpeed: 0,
-    isConnected: false
+    isConnected: false,
+    addEventListener: (..._: any[]) => {},
+    removeEventListener: (..._: any[]) => {}
   };
 }
