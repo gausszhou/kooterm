@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -7,19 +8,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
     VNC_RESOLUTION=1280x720 \
     VNC_PW=vncpassword
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     ca-certificates \
     curl \
     sudo \
     locales \
-    && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && dpkg-reconfigure -f noninteractive tzdata \
-    && locale-gen en_US.UTF-8 \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /usr/share/doc /usr/share/man /usr/share/info
-
-ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
     gnome-session \
     gnome-shell \
     gnome-terminal \
@@ -29,8 +25,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tigervnc-standalone-server \
     tigervnc-tools \
     btop \
+    && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
+    && dpkg-reconfigure -f noninteractive tzdata \
+    && locale-gen en_US.UTF-8 \
     && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale/{??,??_??}/* /usr/share/gnome/help /var/log/* \
+    && rm -rf /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale/{??,??_??}/* /usr/share/gnome/help /var/log/* \
     && useradd -m -s /bin/bash -G sudo user \
     && echo "user:user" | chpasswd \
     && echo "root:root" | chpasswd \
@@ -39,33 +38,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && chmod 600 /home/user/.vnc/passwd \
     && chown -R user:user /home/user/.vnc
 
-RUN curl -fsSL -o /tmp/fastfetch.deb https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb \
-    && dpkg -i /tmp/fastfetch.deb \
-    && rm -f /tmp/fastfetch.deb
+ADD https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb /tmp/fastfetch.deb
+RUN dpkg -i /tmp/fastfetch.deb && rm -f /tmp/fastfetch.deb
+
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 USER user
 WORKDIR /home/user
 
-COPY --chown=user:user <<"EOF" /home/user/.vnc/xstartup
-#!/bin/bash
-export PATH=$PATH:/usr/bin
-export XDG_SESSION_TYPE=x11
-export GNOME_SHELL_SESSION_MODE=ubuntu
-export XDG_CURRENT_DESKTOP=ubuntu:GNOME
-export XDG_CONFIG_DIRS=/etc/xdg/xdg-ubuntu:/etc/xdg
-
-exec gnome-session
-EOF
-
-RUN chmod +x ~/.vnc/xstartup
-
-USER root
-COPY --chown=user:user <<"EOF" /home/user/.vnc/config
-geometry=1280x720
-localhost=no
-EOF
+RUN mkdir -p /home/user/.vnc && \
+    { echo '#!/bin/bash'; \
+      echo 'export PATH=$PATH:/usr/bin'; \
+      echo 'export XDG_SESSION_TYPE=x11'; \
+      echo 'export GNOME_SHELL_SESSION_MODE=ubuntu'; \
+      echo 'export XDG_CURRENT_DESKTOP=ubuntu:GNOME'; \
+      echo 'export XDG_CONFIG_DIRS=/etc/xdg/xdg-ubuntu:/etc/xdg'; \
+      echo ''; \
+      echo 'exec gnome-session'; \
+    } > /home/user/.vnc/xstartup && \
+    chmod +x /home/user/.vnc/xstartup && \
+    { echo 'geometry=1280x720'; \
+      echo 'localhost=no'; \
+    } > /home/user/.vnc/config
 
 EXPOSE 5900
 
-USER user
 CMD ["vncserver", ":", "1", "-fg", "-geometry", "1280x720", "-localhost", "no"]
