@@ -44,7 +44,9 @@ ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 WORKDIR /app
 
-COPY ssl /ssl
+RUN mkdir -p /ssl && openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /ssl/key.pem -out /ssl/cert.pem \
+    -subj "/CN=localhost/O=KooTerm/C=CN"
 ENV SSL_KEY_PATH=/ssl/key.pem SSL_CERT_PATH=/ssl/cert.pem
 
 COPY --from=builder /app/package.json /app/pnpm-workspace.yaml ./
