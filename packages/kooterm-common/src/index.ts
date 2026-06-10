@@ -18,6 +18,11 @@
 import { FrameType } from './types.js';
 export * from './types.js';
 export * from './utils.js';
+export * from './logger.js';
+export * from './WebSocketConnection.js';
+export * from './WebSocketDataChannel.js';
+export * from './TcpProxy.js';
+export * from './http.js';
 
 // 不能使用 Buffer，因为 Buffer 是 Node.js 中的一个类，浏览器中没有这个类
 // 使用 DataView 和 TypedArray 确保浏览器和 Node.js 行为一致
@@ -138,5 +143,18 @@ export class FrameCodec {
 
   static randomIdentifier(): number {
     return Math.floor(Math.random() * 0xfffffff);
+  }
+
+  static encodeTarget(host: string, port: number): Uint8Array {
+    return new TextEncoder().encode(`${host}:${port}`);
+  }
+
+  static decodeTarget(payload: Uint8Array): { host: string; port: number } {
+    const str = new TextDecoder().decode(payload);
+    const colon = str.lastIndexOf(':');
+    return {
+      host: str.substring(0, colon),
+      port: parseInt(str.substring(colon + 1), 10),
+    };
   }
 }

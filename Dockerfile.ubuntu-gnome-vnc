@@ -1,25 +1,28 @@
+# syntax=docker/dockerfile:1
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Asia/Shanghai \
-    DISPLAY=:1 \
-    VNC_PORT=5902 \
+    DISPLAY=:0 \
+    VNC_PORT=5900 \
     VNC_RESOLUTION=1280x720 \
     VNC_PW=vncpassword
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/universe.list \
+    && printf '%s\n' \
+        'deb http://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse' \
+        'deb http://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse' \
+        'deb http://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse' \
+        'deb http://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse' \
+        > /etc/apt/sources.list \
+    && apt-get update && apt-get install -y \
     tzdata \
     ca-certificates \
     curl \
     sudo \
     locales \
-    && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && dpkg-reconfigure -f noninteractive tzdata \
-    && locale-gen en_US.UTF-8 \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /usr/share/doc /usr/share/man /usr/share/info
-
-ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
     gnome-session \
     gnome-shell \
     gnome-terminal \
@@ -27,40 +30,43 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dbus \
     gsettings-desktop-schemas \
     tigervnc-standalone-server \
-    tigervnc-common \
+    tigervnc-tools \
+    btop \
+    && ln -fs /usr/share/zoneinfo/$TZ /etc/localtime \
+    && dpkg-reconfigure -f noninteractive tzdata \
+    && locale-gen en_US.UTF-8 \
     && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale/{??,??_??}/* /usr/share/gnome/help /var/log/* \
+    && rm -rf /usr/share/doc /usr/share/man /usr/share/info /usr/share/locale/{??,??_??}/* /usr/share/gnome/help /var/log/* \
     && useradd -m -s /bin/bash -G sudo user \
     && echo "user:user" | chpasswd \
     && echo "root:root" | chpasswd \
     && mkdir -p /home/user/.vnc \
-    && echo "vncpassword" | vncpasswd -f > /home/user/.vnc/passwd \
+    && echo "vncpassword" | tigervncpasswd -f > /home/user/.vnc/passwd \
     && chmod 600 /home/user/.vnc/passwd \
     && chown -R user:user /home/user/.vnc
+
+ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 USER user
 WORKDIR /home/user
 
-COPY --chown=user:user <<"EOF" /home/user/.vnc/xstartup
-#!/bin/bash
-export PATH=$PATH:/usr/bin
-export XDG_SESSION_TYPE=x11
-export GNOME_SHELL_SESSION_MODE=ubuntu
-export XDG_CURRENT_DESKTOP=ubuntu:GNOME
-export XDG_CONFIG_DIRS=/etc/xdg/xdg-ubuntu:/etc/xdg
+RUN     mkdir -p /home/user/.vnc && \
+    { echo '#!/bin/bash'; \
+      echo 'export PATH=$PATH:/usr/bin'; \
+      echo 'export XDG_SESSION_TYPE=x11'; \
+      echo 'export GNOME_SHELL_SESSION_MODE=ubuntu'; \
+      echo 'export XDG_CURRENT_DESKTOP=ubuntu:GNOME'; \
+      echo 'export XDG_CONFIG_DIRS=/etc/xdg/xdg-ubuntu:/etc/xdg'; \
+      echo ''; \
+      echo '[ ! -S /var/run/dbus/system_bus_socket ] && dbus-daemon --system --fork'; \
+      echo ''; \
+      echo 'exec gnome-session'; \
+    } > /home/user/.vnc/xstartup && \
+    chmod +x /home/user/.vnc/xstartup && \
+    { echo 'geometry=1280x720'; \
+      echo 'localhost=no'; \
+    } > /home/user/.vnc/config
 
-exec gnome-session
-EOF
+EXPOSE 5900
 
-RUN chmod +x ~/.vnc/xstartup
-
-USER root
-COPY --chown=user:user <<"EOF" /home/user/.vnc/config
-geometry=1280x720
-localhost=no
-EOF
-
-EXPOSE 5901
-
-USER user
-CMD ["vncserver", ":", "1", "-fg", "-geometry", "1280x720", "-localhost", "no"]
+CMD ["bash", "-c", "rm -f /tmp/.X*-lock /tmp/.X11-unix 2>/dev/null; exec vncserver :0 -fg -geometry 1280x720 -localhost no"]

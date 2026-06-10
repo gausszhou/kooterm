@@ -10,96 +10,88 @@ KooTerm - Web 终端和 Web VNC 技术调研
 
 ## 部署 VNC
 
+VNC 镜像预装了 `fastfetch`、`btop` 等工具。
+
 ### 预构建镜像
 
 ```bash
 # macos-vnc
-docker run -d --name macos -p 5900:5900 -p 8006:8006 -e "VERSION=14" -e VNC_RESOLUTION=1024x768 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v "${PWD:-.}/macos:/storage" --stop-timeout 120 dockurr/macos
+docker run -d --name macos -p 5900:5900 -p 8006:8006 \
+  -e "VERSION=14" -e VNC_RESOLUTION=1024x768 \
+  --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN \
+  -v "${PWD:-.}/macos:/storage" --stop-timeout 120 dockurr/macos
 
-# ubuntu-xfce-vnc（自定义）
-## 构建镜像
+# ubuntu-xfce-vnc
 docker build -f Dockerfile.ubuntu-xfce-vnc -t ubuntu-xfce-vnc .
-## 运行容器
-docker run -d --name ubuntu-xfce-vnc -p 5901:5901 ubuntu-xfce-vnc
-## VNC 连接 localhost:5901/5901，密码 vncpassword
+docker run -d --name ubuntu-xfce-vnc -p 5900:5900 ubuntu-xfce-vnc
+## VNC 连接 localhost:5900，密码 vncpassword
 
-# ubuntu-gnome-vnc（自定义）
-## 构建镜像
+# ubuntu-gnome-vnc
 docker build -f Dockerfile.ubuntu-gnome-vnc -t ubuntu-gnome-vnc .
-## 运行容器
-docker run -d --name ubuntu-gnome-vnc -p 5902:5902 ubuntu-gnome-vnc
-## VNC 连接 localhost:5902/5902，密码 vncpassword
+docker run -d --name ubuntu-gnome-vnc -p 5900:5900 ubuntu-gnome-vnc
+## VNC 连接 localhost:5900，密码 vncpassword
 ```
 
 ## Docker 部署
 
 ```bash
-# 构建镜像
-docker build -t kooterm .
+# 首次启动（自动构建所有镜像）
+docker-compose up -d
 
-# 首次运行
-docker run -d --name kooterm -p 53001:3001 kooterm
-
-# 重新构建并重启
-docker build -t kooterm . && \
-(docker stop kooterm || true) && \
-(docker rm kooterm || true) && \
+# 重新构建并重启所有服务
 docker-compose up -d --build
 
+# 只重建 kooterm 服务，跳过 VNC 镜像构建
+#（VNC Dockerfile 无变动时走缓存，改动大时可先单独打 tag）
+docker build -f Dockerfile.ubuntu-xfce-vnc -t ubuntu-xfce-vnc .
+docker-compose up -d --build kooterm
 
 # 查看日志
-docker logs -f kooterm
+docker-compose logs -f
+
+# 仅查看 kooterm 日志
+docker-compose logs -f kooterm
 
 # 进入容器调试（基于 Ubuntu，支持 apt/sudo）
 docker exec -it kooterm bash
 ```
 
-访问 `http://localhost:3001` 即可打开终端。
+访问 `http://localhost:53001`（HTTP）或 `https://localhost:53443`（HTTPS，自签证书）即可打开终端。
 
 ## 开发
 
 ### 安装依赖
 
 ```bash
-# 安装所有依赖
 pnpm install
 ```
 
 ### 开发模式
 
 ```bash
-# 分别启动服务
-pnpm dev:portal    # 启动前端门户 (端口由Vite自动分配)
+pnpm dev:portal    # 启动前端门户 (端口由 Vite 自动分配)
 pnpm dev:service   # 启动后端服务 (端口由服务配置决定)
 ```
 
 ### 生产构建
 
 ```bash
-# 构建所有项目
 pnpm build
-
-# 构建脚本会依次构建：
-# 1. kooterm-common (公共库)
-# 2. kooterm-portal (前端门户)
-# 3. kooterm-service (后端服务)
 ```
+
+构建脚本会依次构建：`kooterm-common` → `kooterm-portal` → `kooterm-service`。
 
 ### 启动服务
 
 ```bash
-# 启动后端服务
 pnpm start
 ```
 
 ### 其他命令
 
 ```bash
-# 代码检查
-pnpm lint
-
-# 清理构建产物
-pnpm clean
+pnpm lint     # 代码检查
+pnpm clean    # 清理构建产物
 ```
 
 ## 许可证

@@ -1,9 +1,6 @@
-import { Frame, FrameCodec, FrameType } from '@kooterm/common';
-import { WebSocketDataChannel } from './WebSocketDataChannel';
-import { getLogger } from 'loglevel';
-
-const logger = getLogger('WebSocketConnection');
-logger.setLevel('debug');
+import { Frame, FrameCodec, FrameType } from './index.js';
+import { WebSocketDataChannel } from './WebSocketDataChannel.js';
+import { log } from './logger.js';
 
 export class WebSocketConnection extends EventTarget implements WebSocket {
   ws: WebSocket;
@@ -71,7 +68,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
       this._lastUpBytes = this._upBytes;
       this._lastDownBytes = this._downBytes;
     }, 1000);
-    logger.debug('创建 WebSocket 连接:', url, protocol);
+    log.debug('创建 WebSocket 连接:', url, protocol);
   }
 
   // 网络延迟和速度
@@ -172,7 +169,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
   }
 
   public reconnect(url: string, protocol?: string) {
-    logger.debug('重新连接到:', url, protocol);
+    log.debug('重新连接到:', url, protocol);
     const oldWs = this.ws;
     this.ws = this.createWebSocket(url, protocol);
     this.identifier = FrameCodec.randomIdentifier();
@@ -221,7 +218,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
   private _onMessage(ev: MessageEvent) {
     const frame = FrameCodec.decode(ev.data as ArrayBuffer);
     this._downBytes += ev.data.byteLength;
-    logger.debug(frame.identifier, FrameType[frame.type], frame.payloadLength);
+    log.debug(frame.identifier, FrameType[frame.type], frame.payloadLength);
     if (frame.identifier === this.identifier) {
       const event = new MessageEvent('message', { data: this.decode(frame) });
       this.dispatchEvent(event);
@@ -247,8 +244,9 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
   private _onClose(ev: CloseEvent) {
     this.isConnected = false;
     this._stopKeepAlive();
+    const event = new CloseEvent('close', { code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
     this.getAllDataChannels().forEach(channel => {
-      channel.dispatchEvent(ev);
+      channel.dispatchEvent(event);
     });
   }
 
@@ -260,6 +258,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     const pingTime = FrameCodec.buffer2number(frame.payload);
     this._lastPongTimestamp = Date.now();
     this._rtt = this._lastPongTimestamp - pingTime;
+    console.log(`[Network] RTT: ${this._rtt}ms`);
     const event = new Event('pong', {});
     this.dispatchEvent(event);
     this.getAllDataChannels().forEach(channel => {
@@ -299,7 +298,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     this.addEventListener('message', async ev => {
       const frame = (ev as MessageEvent).data as Frame;
       if (!(frame instanceof Frame)) {
-        logger.warn('收到非 Frame 数据:', frame);
+        log.warn('收到非 Frame 数据:', frame);
         return;
       }
       if (frame.type === FrameType.PONG) {
@@ -322,6 +321,12 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     };
     ws.onmessage = ev => {
       this._onMessage(ev);
+    };
+    ws.onclose = ev => {
+      this._onClose(ev);
+    };
+    ws.onerror = ev => {
+      this._onError(ev);
     };
     return ws;
   }

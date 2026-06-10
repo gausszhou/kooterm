@@ -1,6 +1,8 @@
+# syntax=docker/dockerfile:1
 FROM node:20 AS builder
 
-RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    corepack enable && corepack prepare pnpm@9 --activate
 
 WORKDIR /app
 
@@ -9,26 +11,43 @@ COPY packages/kooterm-common/package.json packages/kooterm-common/
 COPY packages/kooterm-portal/package.json packages/kooterm-portal/
 COPY packages/kooterm-service/package.json packages/kooterm-service/
 
-RUN pnpm install
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install
 
 COPY . .
-RUN pnpm build
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm build
 
-FROM ubuntu:22.04 AS runner
+FROM ubuntu:24.04 AS runner
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/universe.list \
+    && printf '%s\n' \
+        'deb http://mirrors.aliyun.com/ubuntu/ noble main restricted universe multiverse' \
+        'deb http://mirrors.aliyun.com/ubuntu/ noble-updates main restricted universe multiverse' \
+        'deb http://mirrors.aliyun.com/ubuntu/ noble-backports main restricted universe multiverse' \
+        'deb http://mirrors.aliyun.com/ubuntu/ noble-security main restricted universe multiverse' \
+        > /etc/apt/sources.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
     curl \
     sudo \
     ca-certificates \
     locales \
+    btop \
     && locale-gen en_US.UTF-8 \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*.deb
+    && rm -rf /usr/share/doc /usr/share/man /usr/share/info
 
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 WORKDIR /app
+
+RUN mkdir -p /ssl && openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /ssl/key.pem -out /ssl/cert.pem \
+    -subj "/CN=localhost/O=KooTerm/C=CN"
+ENV SSL_KEY_PATH=/ssl/key.pem SSL_CERT_PATH=/ssl/cert.pem
 
 COPY --from=builder /app/package.json /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/packages/kooterm-common/package.json packages/kooterm-common/

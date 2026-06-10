@@ -1,8 +1,7 @@
-import { ref, type Ref } from 'vue';
+import { ref, shallowRef, type Ref } from 'vue';
 import RFB from '@novnc/novnc/lib/rfb';
 import { FrameCodec, FrameType } from '@kooterm/common';
-import { WebSocketConnection } from '@/modules/WebSocketConnection';
-import { WebSocketDataChannel } from '@/modules/WebSocketDataChannel';
+import { WebSocketConnection, WebSocketDataChannel } from '@kooterm/common';
 import { useRFBClipboard } from '@/hooks/useRFBClipbaord';
 import { getLogger } from 'loglevel';
 
@@ -15,7 +14,7 @@ export function useVnc(screenRef: Ref<HTMLElement | undefined>) {
 
   let rfb!: RFB;
   let rfbClipboardClear!: () => void;
-  let connection!: WebSocketConnection;
+  const connection = shallowRef<WebSocketConnection>();
   let channel!: WebSocketDataChannel;
 
   const encode = (data: string | ArrayBuffer) => {
@@ -61,8 +60,8 @@ export function useVnc(screenRef: Ref<HTMLElement | undefined>) {
   const init = (url: string) => {
     if (!screenRef.value) return;
     connecting.value = true;
-    connection = new WebSocketConnection(url);
-    channel = connection.createDataChannel('vnc');
+    connection.value = new WebSocketConnection(url);
+    channel = connection.value.createDataChannel('vnc');
     channel.encode = encode;
     channel.addEventListener('open', onChannelOpen);
     channel.addEventListener('message', onChannelMessage);
@@ -96,8 +95,8 @@ export function useVnc(screenRef: Ref<HTMLElement | undefined>) {
     if (channel) {
       channel.close();
     }
-    if (connection) {
-      connection.close();
+    if (connection.value) {
+      connection.value.close();
     }
   };
 
