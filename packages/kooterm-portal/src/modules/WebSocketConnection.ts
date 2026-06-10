@@ -323,6 +323,12 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     ws.onmessage = ev => {
       this._onMessage(ev);
     };
+    ws.onclose = ev => {
+      this._onClose(ev);
+    };
+    ws.onerror = ev => {
+      this._onError(ev);
+    };
     return ws;
   }
 
