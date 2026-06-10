@@ -157,6 +157,66 @@ describe("FrameCodec", () => {
     });
   });
 
+  describe("encodeTarget and decodeTarget", () => {
+    it("should encode and decode IPv4 target correctly", () => {
+      const host = "192.168.1.100";
+      const port = 5900;
+      const encoded = FrameCodec.encodeTarget(host, port);
+      const decoded = FrameCodec.decodeTarget(encoded);
+      expect(decoded.host).toBe(host);
+      expect(decoded.port).toBe(port);
+    });
+
+    it("should encode and decode hostname target correctly", () => {
+      const host = "vnc.example.com";
+      const port = 5901;
+      const encoded = FrameCodec.encodeTarget(host, port);
+      const decoded = FrameCodec.decodeTarget(encoded);
+      expect(decoded.host).toBe(host);
+      expect(decoded.port).toBe(port);
+    });
+
+    it("should handle IPv6 address correctly", () => {
+      const host = "::1";
+      const port = 5900;
+      const encoded = FrameCodec.encodeTarget(host, port);
+      const decoded = FrameCodec.decodeTarget(encoded);
+      expect(decoded.host).toBe(host);
+      expect(decoded.port).toBe(port);
+    });
+
+    it("should handle port 0 correctly", () => {
+      const host = "localhost";
+      const port = 0;
+      const encoded = FrameCodec.encodeTarget(host, port);
+      const decoded = FrameCodec.decodeTarget(encoded);
+      expect(decoded.host).toBe(host);
+      expect(decoded.port).toBe(port);
+    });
+
+    it("should handle max port correctly", () => {
+      const host = "10.0.0.1";
+      const port = 65535;
+      const encoded = FrameCodec.encodeTarget(host, port);
+      const decoded = FrameCodec.decodeTarget(encoded);
+      expect(decoded.host).toBe(host);
+      expect(decoded.port).toBe(port);
+    });
+
+    it("should round-trip through Frame payload correctly", () => {
+      const host = "192.168.1.1";
+      const port = 8080;
+      const payload = FrameCodec.encodeTarget(host, port);
+      const frame = FrameCodec.create(FrameType.VNC_INIT, 123, payload);
+      const decodedFrame = FrameCodec.decode(frame.toBuffer());
+      const target = FrameCodec.decodeTarget(decodedFrame.payload);
+      expect(target.host).toBe(host);
+      expect(target.port).toBe(port);
+      expect(decodedFrame.type).toBe(FrameType.VNC_INIT);
+      expect(decodedFrame.identifier).toBe(123);
+    });
+  });
+
   describe("integration tests", () => {
     it("should encode and decode complex data correctly", () => {
       const testData = {

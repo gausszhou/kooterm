@@ -8,4 +8,6 @@ export enum FrameType {
   TERMINAL_RESIZE = 0x14,
   VNC_INIT = 0x21,
   VNC_DATA = 0x22,
+  TCP_INIT = 0x31,
+  TCP_DATA = 0x32,
 }

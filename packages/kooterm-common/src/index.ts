@@ -139,4 +139,17 @@ export class FrameCodec {
   static randomIdentifier(): number {
     return Math.floor(Math.random() * 0xfffffff);
   }
+
+  static encodeTarget(host: string, port: number): Uint8Array {
+    return new TextEncoder().encode(`${host}:${port}`);
+  }
+
+  static decodeTarget(payload: Uint8Array): { host: string; port: number } {
+    const str = new TextDecoder().decode(payload);
+    const colon = str.lastIndexOf(':');
+    return {
+      host: str.substring(0, colon),
+      port: parseInt(str.substring(colon + 1), 10),
+    };
+  }
 }

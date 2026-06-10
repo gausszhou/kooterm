@@ -69,4 +69,4 @@ RUN     mkdir -p /home/user/.vnc && \
 
 EXPOSE 5900
 
-CMD ["vncserver", ":", "0", "-fg", "-geometry", "1280x720", "-localhost", "no"]
+CMD ["bash", "-c", "rm -f /tmp/.X*-lock /tmp/.X11-unix 2>/dev/null; exec vncserver :0 -fg -geometry 1280x720 -localhost no"]
