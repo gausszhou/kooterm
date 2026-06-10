@@ -43,8 +43,16 @@ const onVncData = (frame: Frame, socket: VNCServerSocket) => {
   socket.write(frame.payload);
 };
 
-export function useWebSocket(server: http.Server) {
-  const wss = new WebSocketServer({ server });
+export function useWebSocket(server: http.Server | http.Server[]) {
+  const servers = Array.isArray(server) ? server : [server];
+  const wss = new WebSocketServer({ noServer: true });
+  servers.forEach(s => {
+    s.on('upgrade', (request, socket, head) => {
+      wss.handleUpgrade(request, socket, head, ws => {
+        wss.emit('connection', ws, request);
+      });
+    });
+  });
   wss.addListener('headers', (headers, req) => {
     logger.debug('WebSocket请求头:', req.socket.remoteAddress, headers);
   });

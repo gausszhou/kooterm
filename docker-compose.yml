@@ -22,11 +22,12 @@ services:
       - ubuntu-xfce-vnc
     ports:
       - "53001:3001"
-      - "53443:3001"
+      - "53443:3443"
     environment:
       VNC_HOST: ubuntu-xfce-vnc
       VNC_PORT: "5900"
       VNC_ENABLE: "true"
+      SSL_PORT: "3443"
     restart: unless-stopped
     cpus: '0.5'
     mem_limit: 1g
