@@ -16,6 +16,11 @@ export default defineConfig({
         target: 'ws://localhost:3001',
         changeOrigin: true,
         ws: true
+      },
+      '/api/ws/tcp': {
+        target: 'ws://localhost:3001',
+        changeOrigin: true,
+        ws: true
       }
     }
   },
@@ -26,6 +31,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    assetsDir: 'portal-direct-assets',
     sourcemap: false
   }
 });

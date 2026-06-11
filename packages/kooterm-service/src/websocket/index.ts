@@ -72,7 +72,7 @@ function handleVnc(ws: WebSocket, frame: Frame) {
 function handleTcp(ws: WebSocket, frame: Frame) {
   if (frame.type === FrameType.TCP_INIT) {
     const { host, port } = FrameCodec.decodeTarget(frame.payload);
-    logger.debug(frame.identifier, `TCP_INIT ${host}:${port}`);
+    logger.info(frame.identifier, `TCP_INIT ${host}:${port}`);
     tcpManager.getOrCreate(ws, frame.identifier, host, port);
   } else if (frame.type === FrameType.TCP_DATA) {
     tcpManager.write(frame.identifier, frame.payload);
@@ -112,7 +112,7 @@ export function useWebSocket(server: http.Server | http.Server[]) {
         return;
       }
 
-      logger.debug(frame.identifier, FrameType[frame.type], 'payload=' + frame.payloadLength);
+      logger.info(frame.identifier, FrameType[frame.type], 'payload=' + frame.payloadLength);
 
       if (isEcho(frame)) {
         onEcho(ws, frame);

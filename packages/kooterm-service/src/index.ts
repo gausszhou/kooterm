@@ -30,6 +30,10 @@ if (hasSsl) {
 }
 
 app.use(express.static(path.join(__dirname, "../../kooterm-portal/dist")));
+app.use('/portal-direct-assets', express.static(path.join(__dirname, "../../kooterm-portal/dist/portal-direct-assets"), {
+  maxAge: '1y',
+  immutable: true,
+}));
 
 // 根路径重定向到终端页面
 const index = (req: Request, res: Response) => {
