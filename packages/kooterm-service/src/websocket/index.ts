@@ -21,7 +21,7 @@ function handleTerminal(ws: WebSocket, frame: Frame) {
       const sessionId = new TextDecoder().decode(frame.payload);
       logger.debug(frame.identifier, 'TERMINAL_INIT session:', sessionId);
       terminalManager.initSession(sessionId, ws, frame.identifier).then(() => {
-        const resp = FrameCodec.create(FrameType.TERMINAL_INIT, frame.identifier, new Uint8Array(0));
+        const resp = FrameCodec.create(FrameType.TERMINAL_INIT, frame.identifier, new Uint8Array(0), 0);
         ws.send(resp.toBuffer());
       }).catch(err => logger.error(frame.identifier, 'SSH init failed:', err));
       break;
@@ -30,7 +30,7 @@ function handleTerminal(ws: WebSocket, frame: Frame) {
       const sessionId = new TextDecoder().decode(frame.payload);
       logger.debug(frame.identifier, 'TERMINAL_REFRESH session:', sessionId);
       terminalManager.initSession(sessionId, ws, frame.identifier).then(() => {
-        const resp = FrameCodec.create(FrameType.TERMINAL_REFRESH, frame.identifier, new Uint8Array(0));
+        const resp = FrameCodec.create(FrameType.TERMINAL_REFRESH, frame.identifier, new Uint8Array(0), 0);
         ws.send(resp.toBuffer());
       }).catch(err => logger.error(frame.identifier, 'SSH refresh failed:', err));
       break;

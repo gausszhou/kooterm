@@ -23,7 +23,7 @@ const onVncReply = (data: Uint8Array, socket: VNCServerSocket, ws: WebSocket) =>
   } else {
     payload = new Uint8Array(data);
   }
-  const frame = FrameCodec.create(FrameType.VNC_DATA, socket.identifier, data);
+  const frame = FrameCodec.create(FrameType.VNC_DATA, socket.identifier, data, 0);
   ws.send(frame.toBuffer());
 };
 

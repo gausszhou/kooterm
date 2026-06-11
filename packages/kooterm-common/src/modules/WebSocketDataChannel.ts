@@ -1,6 +1,6 @@
-import { Frame, FrameCodec, FrameType } from './index.js';
+import { Frame, FrameCodec, FrameType } from '../index.js';
 import { WebSocketConnection } from './WebSocketConnection.js';
-import { log } from './logger.js';
+import { log } from '../logger.js';
 
 export class WebSocketDataChannel extends EventTarget implements WebSocket {
   readonly CONNECTING = WebSocket.CONNECTING;
@@ -115,7 +115,7 @@ export class WebSocketDataChannel extends EventTarget implements WebSocket {
     if (this.connection.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket is not open');
     }
-    const frame = FrameCodec.create(opcode, this.identifier, data);
+    const frame = FrameCodec.create(opcode, this.identifier, data, 0);
     this.connection.send(frame.toBuffer());
   }
 }

@@ -6,6 +6,13 @@ export const isTcpMessage = (frame: Frame) => {
   return frame.type === FrameType.TCP_INIT || frame.type === FrameType.TCP_DATA;
 };
 
+/**
+ * TCP 隧道管理器
+ *
+ * 每个隧道独立管理生命周期：
+ * - TCP socket 关闭时只从 tcpMap 移除自身，不关闭 WebSocket
+ * - WebSocket 断开时统一关闭所有 TCP socket
+ */
 export class TcpManager {
   private tcpMap = new Map<number, TcpProxySocket>();
 
@@ -15,11 +22,18 @@ export class TcpManager {
       existing.close();
       this.tcpMap.delete(identifier);
     }
-    const socket = new TcpProxySocket(ws, identifier, host, port);
+    const socket = new TcpProxySocket(identifier, host, port);
+
     socket.onData = (data: Uint8Array) => {
-      const out = FrameCodec.create(FrameType.TCP_DATA, identifier, data);
+      if (ws.readyState !== WebSocket.OPEN) return;
+      const out = FrameCodec.create(FrameType.TCP_DATA, identifier, data, socket.port);
       ws.send(out.toBuffer());
     };
+
+    socket.onClose = () => {
+      this.tcpMap.delete(identifier);
+    };
+
     this.tcpMap.set(identifier, socket);
     return socket;
   }

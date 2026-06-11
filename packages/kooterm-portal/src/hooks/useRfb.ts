@@ -18,7 +18,7 @@ export function useRfb(screenRef: Ref<HTMLElement | undefined>) {
   let channel!: WebSocketDataChannel;
 
   const encode = (data: string | ArrayBuffer) => {
-    const frame = FrameCodec.create(FrameType.VNC_DATA, channel.identifier, data);
+    const frame = FrameCodec.create(FrameType.VNC_DATA, channel.identifier, data, 0);
     return frame.toBuffer();
   };
 

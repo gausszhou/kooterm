@@ -16,7 +16,7 @@ function sshConfig(): SshConfig {
 
 const onTerminalData = (data: string, terminal: Terminal, ws: WebSocket, identifier: number) => {
   if (ws.readyState !== WebSocket.OPEN) return;
-  const frame = FrameCodec.create(FrameType.TERMINAL_DATA, identifier, new TextEncoder().encode(data));
+  const frame = FrameCodec.create(FrameType.TERMINAL_DATA, identifier, new TextEncoder().encode(data), 0);
   ws.send(frame.toBuffer());
   logger.debug(identifier, `[${terminal.sessionId}] -> 前端 ${data.length} bytes`);
 };

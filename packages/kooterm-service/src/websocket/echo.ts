@@ -7,7 +7,7 @@ export const isEcho = (frame: Frame) => {
 
 export const onEcho = (ws: WebSocket, frame: Frame) => {
   const replyType = frame.type === FrameType.PING ? FrameType.PONG : FrameType.PING;
-  const pongFrame = FrameCodec.create(replyType, frame.identifier, frame.payload);
+  const pongFrame = FrameCodec.create(replyType, frame.identifier, frame.payload, 0);
   const buffer = pongFrame.toBuffer();
   ws.send(buffer);
 };
