@@ -23,7 +23,12 @@
     "packages/*"
   ],
   "pnpm": {
-    "onlyBuiltDependencies": ["ssh2", "cpu-features"]
+    "onlyBuiltDependencies": [
+      "core-js",
+      "cpu-features",
+      "esbuild",
+      "ssh2"
+    ]
   },
   "keywords": [
     "monorepo",

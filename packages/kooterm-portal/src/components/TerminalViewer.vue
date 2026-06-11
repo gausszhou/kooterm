@@ -107,7 +107,7 @@ onUnmounted(destroy);
 
 .terminal-container {
   padding: 8px;
-  height: calc(100svh - 40px);
+  height: calc(100vh - 36px);
   background-color: #0a0a0a;
 }
 

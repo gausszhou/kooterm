@@ -71,7 +71,11 @@ export function useRfb(screenRef: Ref<HTMLElement | undefined>) {
           username: 'default',
           password: 'vncpassword',
           target: 'default'
-        }
+        },
+        compress: true,
+        quality: 6,
+        encoding: 'Tight',
+        resize: true,
       });
       rfbClipboardClear = useRfbClipboard(rfb);
       rfb.addEventListener('connect', onConnect);

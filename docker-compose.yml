@@ -6,6 +6,8 @@ services:
     container_name: debian-xfce-vnc
     environment:
       VNC_RESOLUTION: "1280x720"
+      VNC_COL_DEPTH: "24"
+      VNC_QUALITY: "6"
       USER: user
       PASSWORD: vncpassword
     ports:

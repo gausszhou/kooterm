@@ -21,6 +21,24 @@ export class Terminal {
     this.ssh = new Client();
   }
 
+  private bindChannel(channel: ClientChannel) {
+    this.shell = channel;
+
+    channel.stderr.on('data', (data: Buffer) => {
+      logger.debug(`[${this.sessionId}] stderr:`, data.toString('utf-8'));
+      this.onData?.(data.toString('utf-8'));
+    });
+
+    channel.on('data', (data: Buffer) => {
+      this.onData?.(data.toString('utf-8'));
+    });
+
+    channel.on('close', () => {
+      logger.info(`[${this.sessionId}] Channel closed`);
+      this.shell = null;
+    });
+  }
+
   init(config: SshConfig): Promise<void> {
     logger.info(`[${this.sessionId}] SSH connecting to ${config.host}:${config.port} as ${config.username}`);
     return new Promise((resolve, reject) => {
@@ -28,30 +46,15 @@ export class Terminal {
       this.ssh = new Client();
 
       this.ssh.on('ready', () => {
-        logger.info(`[${this.sessionId}] SSH connected, opening shell...`);
+        logger.info(`[${this.sessionId}] SSH connected`);
         this.ssh.shell({ term: 'xterm-256color' }, (err, channel) => {
           if (err) {
             logger.error(`[${this.sessionId}] shell() error:`, err);
             reject(err);
             return;
           }
-          this.shell = channel;
+          this.bindChannel(channel);
           logger.info(`[${this.sessionId}] Shell opened`);
-
-          channel.stderr.on('data', (data: Buffer) => {
-            logger.debug(`[${this.sessionId}] Shell stderr:`, data.toString('utf-8'));
-            this.onData?.(data.toString('utf-8'));
-          });
-
-          channel.on('data', (data: Buffer) => {
-            this.onData?.(data.toString('utf-8'));
-          });
-
-          channel.on('close', () => {
-            logger.info(`[${this.sessionId}] Shell closed`);
-            this.shell = null;
-          });
-
           resolve();
         });
       });
@@ -93,36 +96,20 @@ export class Terminal {
   }
 
   openShell(config: SshConfig): Promise<void> {
-    logger.info(`[${this.sessionId}] Opening new shell (refresh)...`);
+    logger.info(`[${this.sessionId}] Opening new shell...`);
+    if (this.shell) {
+      this.shell.close();
+      this.shell = null;
+    }
     return new Promise((resolve, reject) => {
-      if (this.shell) {
-        this.shell.close();
-        this.shell = null;
-      }
-
       this.ssh.shell({ term: 'xterm-256color' }, (err, channel) => {
         if (err) {
           logger.error(`[${this.sessionId}] openShell() error:`, err);
           reject(err);
           return;
         }
-        this.shell = channel;
-        logger.info(`[${this.sessionId}] New shell opened (refresh)`);
-
-        channel.stderr.on('data', (data: Buffer) => {
-          logger.debug(`[${this.sessionId}] Shell stderr:`, data.toString('utf-8'));
-          this.onData?.(data.toString('utf-8'));
-        });
-
-        channel.on('data', (data: Buffer) => {
-          this.onData?.(data.toString('utf-8'));
-        });
-
-        channel.on('close', () => {
-          logger.info(`[${this.sessionId}] Shell closed (refresh)`);
-          this.shell = null;
-        });
-
+        this.bindChannel(channel);
+        logger.info(`[${this.sessionId}] New shell opened`);
         resolve();
       });
     });
