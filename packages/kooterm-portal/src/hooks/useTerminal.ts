@@ -76,10 +76,16 @@ export function useTerminal(terminalRef: Ref<HTMLElement | undefined>) {
     try { channel._send(FrameType.TERMINAL_INIT, sessionId); } catch (e) { console.error('TERMINAL_INIT send failed:', e); }
   };
 
-  const onChannelClose = () => {
+  const onChannelClose = (event: Event) => {
+    const ev = event as CloseEvent;
     connected.value = false;
     connecting.value = false;
-    logger.info('Channel 已关闭');
+    if (ev.code === 4001) {
+      logger.warn('会话被淘汰, 断开连接');
+      sessionStorage.removeItem(SESSION_KEY);
+    } else {
+      logger.info('Channel 已关闭', ev.code, ev.reason);
+    }
   };
 
   const onChannelMessage = (event: Event) => {

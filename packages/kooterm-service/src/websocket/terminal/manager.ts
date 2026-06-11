@@ -29,7 +29,8 @@ export const isTerminal = (frame: Frame) => {
 
 export class TerminalManager {
   private sessions = new Map<string, Terminal>();
-  private channelSession = new Map<WebSocket, Map<number, string>>();
+  private identifierSession = new Map<number, string>();
+  private sessionSubscribers = new Map<string, Set<WebSocket>>();
   readonly maxSshConnections: number;
 
   constructor(maxSshConnections: number = 5) {
@@ -45,6 +46,13 @@ export class TerminalManager {
     const key = this.sessions.keys().next().value;
     if (key !== undefined) {
       logger.warn(`LRU 淘汰会话: ${key} (当前 ${this.sessions.size} 个)`);
+      const subs = this.sessionSubscribers.get(key);
+      if (subs) {
+        for (const ws of subs) {
+          ws.close(4001, 'Session evicted');
+        }
+        this.sessionSubscribers.delete(key);
+      }
       const term = this.sessions.get(key);
       term?.kill();
       this.sessions.delete(key);
@@ -52,61 +60,51 @@ export class TerminalManager {
   }
 
   async initSession(sessionId: string, ws: WebSocket, identifier: number): Promise<Terminal> {
-    let terminal = this.sessions.get(sessionId);
-    const isNew = !terminal;
+    this.identifierSession.set(identifier, sessionId);
 
-    let inner = this.channelSession.get(ws);
-    if (!inner) {
-      inner = new Map();
-      this.channelSession.set(ws, inner);
+    const old = this.sessions.get(sessionId);
+    if (old) {
+      logger.info(identifier, `[${sessionId}] 已有旧会话，关闭旧连接`);
+      const subs = this.sessionSubscribers.get(sessionId);
+      if (subs) {
+        for (const s of subs) {
+          if (s !== ws) s.close(4001, 'Session replaced');
+        }
+        this.sessionSubscribers.delete(sessionId);
+      }
+      old.kill();
+      this.sessions.delete(sessionId);
     }
-    inner.set(identifier, sessionId);
-    logger.debug(identifier, `[${sessionId}] 映射 identifier=${identifier}, 新建=${isNew}`);
 
-    if (!terminal) {
-      if (this.sessions.size >= this.maxSshConnections) {
-        this.evictLRU();
-      }
-      terminal = new Terminal(sessionId);
-      terminal.onData = (data: string) => onTerminalData(data, terminal!, ws, identifier);
-      this.sessions.set(sessionId, terminal);
-      logger.info(identifier, `[${sessionId}] 开始 SSH 连接 ${SSH_HOST}:${SSH_PORT} 用户=${SSH_USER}`);
-      await terminal.init(sshConfig());
-      logger.info(identifier, `[${sessionId}] SSH 连接成功`);
-    } else {
-      terminal.onData = (data: string) => onTerminalData(data, terminal!, ws, identifier);
-      if (!terminal.shell) {
-        logger.info(identifier, `[${sessionId}] Shell 已关闭，重新打开`);
-        await terminal.openShell(sshConfig());
-      } else {
-        logger.debug(identifier, `[${sessionId}] 复用已有会话`);
-      }
+    if (this.sessions.size >= this.maxSshConnections) {
+      this.evictLRU();
     }
+
+    const subs = new Set<WebSocket>([ws]);
+    this.sessionSubscribers.set(sessionId, subs);
+
+    const terminal = new Terminal(sessionId);
+    terminal.onData = (data: string) => onTerminalData(data, terminal, ws, identifier);
+    this.sessions.set(sessionId, terminal);
+
+    logger.info(identifier, `[${sessionId}] 开始 SSH 连接 ${SSH_HOST}:${SSH_PORT} 用户=${SSH_USER}`);
+    await terminal.init(sshConfig());
+    logger.info(identifier, `[${sessionId}] SSH 连接成功`);
 
     return terminal;
   }
 
-  getSessionId(ws: WebSocket, identifier: number): string | undefined {
-    return this.channelSession.get(ws)?.get(identifier);
-  }
-
-  async openShell(sessionId: string): Promise<Terminal> {
-    const terminal = this.sessions.get(sessionId);
-    if (!terminal) {
-      logger.error(`[openShell] 会话不存在: ${sessionId}`);
-      throw new Error(`Session ${sessionId} not found`);
-    }
-    logger.info(`[${sessionId}] 刷新 Shell`);
-    await terminal.openShell(sshConfig());
-    return terminal;
+  getSessionId(identifier: number): string | undefined {
+    return this.identifierSession.get(identifier);
   }
 
   removeConnection(ws: WebSocket) {
-    const channels = this.channelSession.get(ws);
-    if (channels) {
-      logger.info(`断开连接, 清理 ${channels.size} 个通道映射`);
+    for (const [sessionId, subs] of this.sessionSubscribers) {
+      subs.delete(ws);
+      if (subs.size === 0) {
+        this.sessionSubscribers.delete(sessionId);
+      }
     }
-    this.channelSession.delete(ws);
   }
 
   size() {
@@ -120,12 +118,4 @@ export class TerminalManager {
     }
   }
 
-  removeSession(sessionId: string) {
-    const terminal = this.sessions.get(sessionId);
-    if (terminal) {
-      logger.info(`手动移除会话: ${sessionId}`);
-      terminal.kill();
-    }
-    this.sessions.delete(sessionId);
-  }
 }
