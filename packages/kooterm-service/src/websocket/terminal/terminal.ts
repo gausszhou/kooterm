@@ -50,6 +50,7 @@ export class Terminal {
         this.ssh.shell({ term: 'xterm-256color' }, (err, channel) => {
           if (err) {
             logger.error(`[${this.sessionId}] shell() error:`, err);
+            this.onData?.(`\r\n\x1b[31mShell 打开失败: ${err.message}\x1b[0m\r\n`);
             reject(err);
             return;
           }
@@ -61,6 +62,7 @@ export class Terminal {
 
       this.ssh.on('error', (err) => {
         logger.error(`[${this.sessionId}] SSH error:`, err);
+        this.onData?.(`\r\n\x1b[31mSSH 连接失败: ${err.message}\x1b[0m\r\n`);
         reject(err);
       });
 
@@ -76,6 +78,12 @@ export class Terminal {
         readyTimeout: 10000,
       });
       logger.info(`[${this.sessionId}] SSH connect() called`);
+
+      setTimeout(() => {
+        if (!this.shell) {
+          this.onData?.(`\r\n\x1b[33mSSH 连接超时 (${config.host}:${config.port})\x1b[0m\r\n`);
+        }
+      }, 10000);
     });
   }
 

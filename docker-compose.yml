@@ -12,8 +12,8 @@ services:
       PASSWORD: vncpassword
     ports:
       - "5900:5901"
-    entrypoint: >
-      bash -c "service ssh start && /dockerstartup/vnc_startup.sh --wait"
+      - "10800:10800"
+      - "4096:4096"
     restart: unless-stopped
     cpus: '2'
     mem_limit: 4g

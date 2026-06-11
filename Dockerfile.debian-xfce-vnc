@@ -2,11 +2,14 @@ FROM consol/debian-xfce-vnc
 
 USER 0
 
-# 1a. 更新 apt
+# 1a. 换源（加速 apt）
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
+
+# 1b. 更新 apt
 RUN apt-get update
 
 # 1b. SSH
-RUN apt-get install -y openssh-server sudo locales
+RUN apt-get install -y openssh-server sudo locales supervisor
 
 # 1c. 下载工具
 RUN apt-get install -y wget curl
@@ -29,7 +32,7 @@ RUN mkdir -p /var/run/sshd \
     && echo "AcceptEnv LANG LC_ALL" >> /etc/ssh/sshd_config
 
 # 4. Go 1.26.1
-RUN wget -q https://go.dev/dl/go1.26.1.linux-amd64.tar.gz -O /tmp/go.tar.gz \
+RUN wget -q https://gitcode.com/mirror-releases/golang/releases/download/latest/go1.26.1.linux-amd64.tar.gz -O /tmp/go.tar.gz \
     && tar -C /usr/local -xzf /tmp/go.tar.gz \
     && rm /tmp/go.tar.gz
 
@@ -38,18 +41,46 @@ RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get purge -y nodejs || true \
     && apt-get update && apt-get install -y nodejs
 
-# 6. PATH
+# 6. openvscode-server
+RUN wget -q -O /tmp/openvscode.tar.gz \
+    https://gitcode.com/mirror-releases/nodejs/releases/download/latest/openvscode-server-v1.109.5-linux-x64.tar.gz \
+    && tar -xzf /tmp/openvscode.tar.gz -C /usr/lib \
+    && ln -sf /usr/lib/openvscode-server-v1.109.5-linux-x64/bin/openvscode-server /usr/local/bin/openvscode-server \
+    && rm /tmp/openvscode.tar.gz
+
+# 7. opencode
+RUN wget -q -O /tmp/opencode.tar.gz \
+    https://gitcode.com/mirror-releases/nodejs/releases/download/latest/opencode-linux-x64.tar.gz \
+    && tar -xzf /tmp/opencode.tar.gz -C /usr/local/bin \
+    && rm /tmp/opencode.tar.gz
+
+# 8. PATH
 RUN echo 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"' > /etc/profile.d/dev-env.sh
 
-# 7. 用户
+# 9. 用户
 RUN useradd -m -s /bin/bash user \
     && echo "user:user" | chpasswd \
     && usermod -aG sudo user \
     && echo '%sudo ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-# 8. 清理 apt 缓存
+# 10. 工作目录
+RUN mkdir -p /home/user/workspace \
+    && chown -R user:user /home/user/workspace
+
+# 11. openvscode-server 配置（无密码）
+RUN mkdir -p /home/user/.vscode-server \
+    && chown -R user:user /home/user/.vscode-server
+
+# 12. supervisord 配置（清理基础镜像残留配置）
+RUN rm -f /etc/supervisor/conf.d/* \
+    && mkdir -p /var/log/supervisor \
+    && printf '[supervisord]\nnodaemon=true\nuser=root\nlogfile=/var/log/supervisor/supervisord.log\npidfile=/var/run/supervisord.pid\n\n[program:sshd]\ncommand=/usr/sbin/sshd -D\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/sshd.log\nstderr_logfile=/var/log/supervisor/sshd_err.log\n\n[program:vnc]\ncommand=/dockerstartup/vnc_startup.sh --wait\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/vnc.log\nstderr_logfile=/var/log/supervisor/vnc_err.log\n\n[program:openvscode]\ncommand=su - user -c "openvscode-server --host 0.0.0.0 --port 10800 --without-connection-token --default-folder /home/user/workspace"\ndirectory=/home/user/workspace\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/openvscode.log\nstderr_logfile=/var/log/supervisor/openvscode_err.log\n\n[program:opencode]\ncommand=su - user -c "opencode serve --hostname 0.0.0.0 --port 4096"\ndirectory=/home/user/workspace\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/opencode.log\nstderr_logfile=/var/log/supervisor/opencode_err.log\n' > /etc/supervisor/conf.d/supervisord.conf
+
+# 13. 清理 apt 缓存
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
-EXPOSE 22 5901
+EXPOSE 22 5901 10800 4096
+
+ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
