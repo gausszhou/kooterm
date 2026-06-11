@@ -72,7 +72,7 @@ export function useRfb(screenRef: Ref<HTMLElement | undefined>) {
           password: 'vncpassword',
           target: 'default'
         },
-        compress: 9,
+        compress: true,
         quality: 6,
         encoding: 'Tight',
         resize: true,
