@@ -4,11 +4,11 @@ import { getLogger } from 'loglevel';
 
 const logger = getLogger('useTcpProxy');
 
-function formatBytes(data: Uint8Array, head = 512, tail = 512): string {
-  if (data.length <= head + tail) return new TextDecoder().decode(data);
-  const h = new TextDecoder().decode(data.slice(0, head));
-  const t = new TextDecoder().decode(data.slice(-tail));
-  return `${h}\n... (${data.length - head - tail} bytes omitted) ...\n${t}`;
+function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const r = new Uint8Array(a.length + b.length);
+  r.set(a, 0);
+  r.set(b, a.length);
+  return r;
 }
 
 const ERROR_LABELS: Record<number, string> = {
@@ -42,26 +42,30 @@ export function useTcpProxy() {
       const portStr = targetPort === 80 || targetPort === 443 ? '' : `:${targetPort}`;
       allHeaders['Host'] = `${targetHost}${portStr}`;
     }
-    if (!Object.keys(allHeaders).some(k => k.toLowerCase() === 'connection')) {
-      allHeaders['Connection'] = 'close';
-    }
 
     const raw = HttpCodec.encodeRequest(method, reqPath, allHeaders, body ? new Uint8Array(body) : undefined);
     logger.info(`[TCP Proxy] >>> [${id}] ${method} ${targetHost}:${targetPort}${reqPath} (${raw.length} bytes)`);
-    logger.info(`[TCP Proxy] >>> Raw:\n${formatBytes(raw)}`);
 
     let tunnel: TcpTunnel | null = null;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    let resolved = false;
+    let buffer = new Uint8Array(0);
+    let headersSent = false;
+    let done = false;
+
+    let headerTimeout: ReturnType<typeof setTimeout> | undefined;
+
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(headerTimeout);
+      pendingAborts.delete(abort);
+      tunnel?.close();
+    };
 
     const sendError = (message: string) => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timeout);
-      pendingAborts.delete(abort);
+      if (done) return;
+      cleanup();
       logger.error(`[TCP Proxy] <<< [${id}] Error: ${message}`);
       event.source.postMessage({ type: 'tcp-error', id, message });
-      tunnel?.close();
     };
 
     const abort = () => sendError('Request aborted');
@@ -71,36 +75,66 @@ export function useTcpProxy() {
       tunnel = await proxy.createTunnel(targetHost, targetPort);
       logger.info(`[TCP Proxy] [${id}] KTP tunnel created, identifier=${tunnel.identifier}`);
 
-      tunnel.onError = (type, msg) => sendError(ERROR_LABELS[type] || msg);
+      tunnel.onError = (type, msg) => {
+        if (type === TcpErrorType.CLOSED && headersSent) {
+          cleanup();
+          logger.info(`[TCP Proxy] <<< [${id}] TCP CLOSED, stream done`);
+          event.source.postMessage({ type: 'tcp-done', id });
+        } else if (!headersSent) {
+          sendError(ERROR_LABELS[type] || msg);
+        } else {
+          sendError(`Stream error: ${msg}`);
+        }
+      };
 
-      const responsePromise = HttpCodec.collectResponse(
-        (cb) => { tunnel!.onData = cb; },
-        (cb) => { proxy!.connection.addEventListener('close', () => cb()); }
-      );
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeout = setTimeout(() => reject(new Error('Request timeout')), 10000);
-      });
+      headerTimeout = setTimeout(() => {
+        sendError('Header timeout (10s)');
+      }, 10000);
+
+      tunnel.onData = (chunk) => {
+        if (done) return;
+
+        if (!headersSent) {
+          buffer = concat(buffer, chunk);
+          const parsed = HttpCodec.parseHeaders(buffer);
+          if (!parsed) return;
+
+          clearTimeout(headerTimeout);
+          headersSent = true;
+          logger.info(`[TCP Proxy] <<< [${id}] ${parsed.statusCode} ${parsed.statusText}`);
+
+          event.source.postMessage({
+            type: 'tcp-response-headers',
+            id,
+            status: parsed.statusCode,
+            statusText: parsed.statusText,
+            headers: parsed.headers,
+          });
+
+          const bodyStart = parsed.headerLength;
+          const remaining = buffer.slice(bodyStart);
+          if (remaining.length > 0) {
+            logger.info(`[TCP Proxy] <<< [${id}] chunk ${remaining.length} bytes (buffered)`);
+            event.source.postMessage({
+              type: 'tcp-chunk',
+              id,
+              data: Array.from(remaining),
+            });
+          }
+          buffer = new Uint8Array(0);
+          return;
+        }
+
+        logger.info(`[TCP Proxy] <<< [${id}] chunk ${chunk.length} bytes`);
+        event.source.postMessage({
+          type: 'tcp-chunk',
+          id,
+          data: Array.from(chunk),
+        });
+      };
 
       tunnel.send(raw);
       logger.info(`[TCP Proxy] [${id}] TCP_DATA sent (${raw.length} bytes)`);
-
-      const response = await Promise.race([responsePromise, timeoutPromise]);
-
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timeout);
-      pendingAborts.delete(abort);
-
-      logger.info(`[TCP Proxy] <<< [${id}] ${response.statusCode} ${response.statusText} (${response.body.length} bytes)`);
-      event.source.postMessage({
-        type: 'tcp-response',
-        id,
-        status: response.statusCode,
-        statusText: response.statusText,
-        headers: response.headers,
-        body: Array.from(response.body),
-      });
-      tunnel.close();
     } catch (err: any) {
       sendError(err.message);
     }

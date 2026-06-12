@@ -5,6 +5,13 @@ export interface HttpResponse {
   body: Uint8Array;
 }
 
+export interface HttpHeaderResult {
+  statusCode: number;
+  statusText: string;
+  headers: Record<string, string>;
+  headerLength: number;
+}
+
 export class HttpCodec {
   /**
    * 编码 HTTP 请求为原始字节
@@ -40,6 +47,28 @@ export class HttpCodec {
     result.set(headBytes, 0);
     result.set(bodyBytes, headBytes.length);
     return result;
+  }
+
+  /**
+   * 仅解析 HTTP 响应头，不等待 body
+   * 返回 null 表示数据不完整
+   */
+  static parseHeaders(data: Uint8Array): HttpHeaderResult | null {
+    const headerEnd = indexOfDoubleCRLF(data, 0);
+    if (headerEnd === -1) return null;
+
+    const headStr = new TextDecoder().decode(data.slice(0, headerEnd));
+    const lines = headStr.split('\r\n');
+    if (lines.length < 1) return null;
+
+    const statusMatch = lines[0].match(/^HTTP\/\d+\.\d+\s+(\d+)\s+(.+)$/);
+    if (!statusMatch) return null;
+
+    const statusCode = parseInt(statusMatch[1], 10);
+    const statusText = statusMatch[2];
+    const headers = parseHeaders(lines.slice(1).join('\r\n'));
+
+    return { statusCode, statusText, headers, headerLength: headerEnd };
   }
 
   /**

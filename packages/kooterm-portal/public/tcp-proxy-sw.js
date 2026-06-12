@@ -57,7 +57,7 @@ function isTextResponse(contentType) {
 }
 
 function shouldBypassProxy(pathname) {
-  return pathname.startsWith('/api') ||
+  return     pathname.startsWith('/portal-direct-api') ||
     pathname.startsWith('/portal-direct-assets/') ||
     pathname === '/tcp-proxy-sw.js';
 }
@@ -120,55 +120,99 @@ async function handleRequest(event, { host, port, path }) {
       resolve(new Response('Gateway Timeout (10s)', { status: 504 }));
     }, TIMEOUT_MS);
 
-    pendingRequests.set(requestId, { resolve, timer, host, port, clientId: event.resultingClientId || event.clientId });
+    pendingRequests.set(requestId, {
+      resolve,
+      timer,
+      host,
+      port,
+      clientId: event.resultingClientId || event.clientId,
+      controller: null,
+      textChunks: null,
+    });
   });
 }
 
 self.addEventListener('message', (event) => {
   const { type, id } = event.data;
+  const pending = pendingRequests.get(id);
+  if (!pending) return;
 
-  if (type === 'tcp-response') {
-    const pending = pendingRequests.get(id);
-    if (!pending) return;
-
+  if (type === 'tcp-response-headers') {
     clearTimeout(pending.timer);
-    pendingRequests.delete(id);
 
-    const { status, statusText, headers, body } = event.data;
-    const responseBody = body ? new Uint8Array(body) : null;
+    const { status, statusText, headers } = event.data;
 
     const contentType = getHeader(headers, 'content-type');
     if (pending.clientId && contentType.includes('text/html')) {
       proxySessions.set(pending.clientId, { host: pending.host, port: pending.port });
     }
 
-    if (responseBody && isTextResponse(contentType)) {
-      const text = new TextDecoder().decode(responseBody);
-      const rewritten = rewriteHtml(text, pending.host, pending.port);
-      resolve(pending.resolve, new Response(rewritten, {
-        status,
-        statusText,
-        headers: new Headers(headers),
-      }));
-    } else {
-      resolve(pending.resolve, new Response(responseBody, {
-        status,
-        statusText,
-        headers: new Headers(headers),
-      }));
+    pending.headers = headers;
+    pending.textResponse = isTextResponse(contentType);
+    if (pending.textResponse) {
+      pending.textChunks = [];
     }
+
+    const stream = new ReadableStream({
+      start(controller) {
+        pending.controller = controller;
+      },
+      cancel() {
+        pendingRequests.delete(id);
+      },
+    });
+
+    const response = new Response(stream, {
+      status,
+      statusText,
+      headers: new Headers(headers),
+    });
+    pending.resolve(response);
+    return;
+  }
+
+  if (type === 'tcp-chunk') {
+    const chunk = new Uint8Array(event.data.data);
+
+    if (pending.textResponse) {
+      pending.textChunks.push(chunk);
+      return;
+    }
+
+    pending.controller.enqueue(chunk);
+    return;
+  }
+
+  if (type === 'tcp-done') {
+    pendingRequests.delete(id);
+
+    if (pending.textResponse && pending.textChunks) {
+      const total = pending.textChunks.reduce((s, c) => s + c.length, 0);
+      const merged = new Uint8Array(total);
+      let offset = 0;
+      for (const c of pending.textChunks) {
+        merged.set(c, offset);
+        offset += c.length;
+      }
+      const text = new TextDecoder().decode(merged);
+      const rewritten = rewriteHtml(text, pending.host, pending.port);
+      pending.controller.enqueue(new TextEncoder().encode(rewritten));
+    }
+
+    if (pending.controller) {
+      pending.controller.close();
+    }
+    return;
   }
 
   if (type === 'tcp-error') {
-    const pending = pendingRequests.get(event.data.id);
-    if (!pending) return;
+    pendingRequests.delete(id);
 
-    clearTimeout(pending.timer);
-    pendingRequests.delete(event.data.id);
-    resolve(pending.resolve, new Response('Bad Gateway', { status: 502 }));
+    if (pending.controller) {
+      pending.controller.error(new Error('Stream error'));
+    } else {
+      pending.resolve(new Response('Bad Gateway', { status: 502 }));
+    }
+    return;
   }
 });
-
-function resolve(promiseResolve, response) {
-  promiseResolve(response);
-}

@@ -70,6 +70,17 @@ describe('HttpCodec', () => {
       const text = bytes2str(raw);
       expect(text).toContain('GET /search?q=hello&page=1 HTTP/1.1');
     });
+
+    it('should NOT add Connection header', () => {
+      const raw = HttpCodec.encodeRequest('GET', '/', { Host: 'example.com' });
+      const text = bytes2str(raw);
+      expect(text).not.toContain('Connection');
+    });
+
+    it('should keep existing Connection header if provided', () => {
+      const raw = HttpCodec.encodeRequest('GET', '/', { Host: 'a.com', Connection: 'keep-alive' });
+      expect(bytes2str(raw)).toContain('Connection: keep-alive');
+    });
   });
 
   describe('decodeResponse', () => {
@@ -137,6 +148,60 @@ describe('HttpCodec', () => {
     it('should handle empty response line', () => {
       const res = HttpCodec.decodeResponse(str2bytes(`\r\n`));
       expect(res).toBeNull();
+    });
+  });
+
+  describe('parseHeaders', () => {
+    it('should parse status and headers from complete response', () => {
+      const raw = str2bytes(`HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nHello`);
+      const result = HttpCodec.parseHeaders(raw);
+      expect(result).not.toBeNull();
+      expect(result!.statusCode).toBe(200);
+      expect(result!.statusText).toBe('OK');
+      expect(result!.headers['Content-Type']).toBe('text/plain');
+    });
+
+    it('should return correct headerLength', () => {
+      const raw = str2bytes(`HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n`);
+      const result = HttpCodec.parseHeaders(raw);
+      expect(result).not.toBeNull();
+      const expectedLen = `HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n`.length;
+      expect(result!.headerLength).toBe(expectedLen);
+    });
+
+    it('should return null for incomplete headers', () => {
+      const raw = str2bytes(`HTTP/1.1 200 OK\r\nContent`);
+      const result = HttpCodec.parseHeaders(raw);
+      expect(result).toBeNull();
+    });
+
+    it('should parse headers even without body', () => {
+      const raw = str2bytes(`HTTP/1.1 204 No Content\r\n\r\n`);
+      const result = HttpCodec.parseHeaders(raw);
+      expect(result).not.toBeNull();
+      expect(result!.statusCode).toBe(204);
+      expect(result!.statusText).toBe('No Content');
+    });
+
+    it('should parse headers when body follows', () => {
+      const raw = str2bytes(`HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nbody data here`);
+      const result = HttpCodec.parseHeaders(raw);
+      expect(result).not.toBeNull();
+      expect(result!.statusCode).toBe(200);
+      expect(result!.headerLength).toBeLessThan(raw.length);
+    });
+
+    it('should parse multiple headers', () => {
+      const raw = str2bytes(`HTTP/1.1 302 Found\r\nLocation: /new\r\nSet-Cookie: a=1\r\nContent-Length: 0\r\n\r\n`);
+      const result = HttpCodec.parseHeaders(raw);
+      expect(result).not.toBeNull();
+      expect(result!.headers['Location']).toBe('/new');
+      expect(result!.headers['Set-Cookie']).toBe('a=1');
+    });
+
+    it('should handle empty status line', () => {
+      const result = HttpCodec.parseHeaders(str2bytes(`\r\n`));
+      expect(result).toBeNull();
     });
   });
 

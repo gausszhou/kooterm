@@ -25,7 +25,7 @@ import { useTerminal } from '@/hooks/useTerminal';
 const props = defineProps({
   url: {
     type: String,
-    default: '/api/ws/terminal'
+    default: '/portal-direct-api/ws/terminal'
   }
 });
 

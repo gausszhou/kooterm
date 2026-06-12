@@ -30,7 +30,7 @@ export class TcpProxySocket {
 
   constructor(identifier: number, host: string, port: number) {
     logger.debug(identifier, `TCP 代理: ${host}:${port}`);
-    this.socket = net.createConnection({ host, port });
+    this.socket = net.createConnection({ host, port, readableHighWaterMark: 65536 });
     this.identifier = identifier;
     this.port = port;
 

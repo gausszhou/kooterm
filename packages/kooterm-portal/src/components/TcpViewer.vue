@@ -46,7 +46,7 @@ import { useTcpProxy } from '@/hooks/useTcpProxy';
 const props = defineProps({
   url: {
     type: String,
-    default: '/api/ws/tcp',
+    default: '/portal-direct-api/ws/tcp',
   },
 });
 

@@ -60,7 +60,7 @@ if (hasSsl) {
   });
   server.listen(SSL_PORT, () => {
     console.log(`HTTPS 服务运行: https://localhost:${SSL_PORT}`);
-    console.log(`WS    wss://localhost:${SSL_PORT}/api/ws/terminal`);
+    console.log(`WS    wss://localhost:${SSL_PORT}/portal-direct-api/ws/terminal`);
   });
 } else {
   useWebSocket(server);
