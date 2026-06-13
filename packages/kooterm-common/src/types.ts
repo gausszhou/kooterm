@@ -10,4 +10,13 @@ export enum FrameType {
   VNC_DATA = 0x22,
   TCP_INIT = 0x31,
   TCP_DATA = 0x32,
+  TCP_ERROR = 0x33,
+}
+
+export enum TcpErrorType {
+  REFUSED = 0x01,
+  TIMEOUT = 0x02,
+  RESET = 0x03,
+  CLOSED = 0x04,
+  OTHER = 0xFF,
 }

@@ -14,6 +14,10 @@ const router = createRouter({
     {
       path: '/vnc',
       component: () => import('@/views/vnc.vue')
+    },
+    {
+      path: '/tcp',
+      component: () => import('@/views/tcp.vue')
     }
   ]
 });

@@ -27,7 +27,7 @@ import { useRfb } from '@/hooks/useRfb';
 const props = defineProps({
   url: {
     type: String,
-    default: '/api/ws/vnc'
+    default: '/portal-direct-api/ws/vnc'
   }
 });
 

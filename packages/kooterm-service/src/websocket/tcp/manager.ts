@@ -1,6 +1,10 @@
 import { Frame, FrameCodec, FrameType } from '@kooterm/common';
 import WebSocket from 'ws';
 import { TcpProxySocket } from './tcp.js';
+import loglevel, { LogLevelDesc } from 'loglevel';
+
+const logger = loglevel.getLogger('TcpManager');
+logger.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || 'info');
 
 export const isTcpMessage = (frame: Frame) => {
   return frame.type === FrameType.TCP_INIT || frame.type === FrameType.TCP_DATA;
@@ -11,6 +15,7 @@ export const isTcpMessage = (frame: Frame) => {
  *
  * 每个隧道独立管理生命周期：
  * - TCP socket 关闭时只从 tcpMap 移除自身，不关闭 WebSocket
+ * - TCP 错误时发送 TCP_ERROR 帧通知客户端
  * - WebSocket 断开时统一关闭所有 TCP socket
  */
 export class TcpManager {
@@ -26,12 +31,32 @@ export class TcpManager {
 
     socket.onData = (data: Uint8Array) => {
       if (ws.readyState !== WebSocket.OPEN) return;
+      const head = new TextDecoder().decode(data.slice(0, Math.min(data.length, 200)));
+      logger.info(`[TCP] <<< ${identifier} Response ${data.length} bytes: ${head.replace(/\n.*/s, '...')}`);
       const out = FrameCodec.create(FrameType.TCP_DATA, identifier, data, socket.port);
+      ws.send(out.toBuffer());
+    };
+
+    socket.onError = (type: number, message: string) => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      logger.info(`[TCP] <<< ${identifier} TCP_ERROR ${message}`);
+      const msgBytes = new TextEncoder().encode(message);
+      const payload = new Uint8Array(1 + msgBytes.length);
+      payload[0] = type;
+      payload.set(msgBytes, 1);
+      const out = FrameCodec.create(FrameType.TCP_ERROR, identifier, payload, socket.port);
       ws.send(out.toBuffer());
     };
 
     socket.onClose = () => {
       this.tcpMap.delete(identifier);
+    };
+
+    socket.onConnect = () => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      logger.info(`[TCP] <<< ${identifier} TCP_ACK (connection established)`);
+      const out = FrameCodec.create(FrameType.TCP_INIT, identifier, new Uint8Array(0), socket.port);
+      ws.send(out.toBuffer());
     };
 
     this.tcpMap.set(identifier, socket);

@@ -1,14 +1,17 @@
 import { WebSocketConnection } from './WebSocketConnection.js';
 import { WebSocketDataChannel } from './WebSocketDataChannel.js';
-import { FrameCodec, FrameType } from '../index.js';
+import { Frame, FrameCodec, FrameType } from '../index.js';
 import { HttpCodec, type HttpResponse } from './HttpCodec.js';
+import { log } from '../logger.js';
 
 export interface TcpTunnel {
   host: string;
   port: number;
+  identifier: number;
   send(data: Uint8Array | ArrayBuffer): void;
   close(): void;
   onData: ((data: Uint8Array) => void) | null;
+  onError: ((type: number, message: string) => void) | null;
 }
 
 /**
@@ -27,6 +30,10 @@ export class TcpProxy {
     this.conn = new WebSocketConnection(url);
   }
 
+  get connection(): WebSocketConnection {
+    return this.conn;
+  }
+
   /**
    * 创建一个独立的 TCP 隧道
    *
@@ -38,9 +45,19 @@ export class TcpProxy {
     const channel = this.conn.createDataChannel(label);
 
     return new Promise((resolve, reject) => {
+      let resolved = false;
+
+      const timeout = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        reject(new Error('Tunnel connection timeout'));
+        channel.close();
+      }, 10000);
+
       const tunnel: TcpTunnel = {
         host,
         port,
+        identifier: channel.identifier,
         send: (data) => {
           if (channel.readyState !== WebSocket.OPEN) return;
           const frame = FrameCodec.create(FrameType.TCP_DATA, channel.identifier, data, port);
@@ -50,22 +67,52 @@ export class TcpProxy {
           channel.close();
         },
         onData: null,
+        onError: null,
       };
 
       channel.addEventListener('open', () => {
         const payload = FrameCodec.encodeTarget(host, port);
+        log.info(`[TCP] >>> TCP_INIT sent identifier=${channel.identifier} target=${host}:${port}`);
         channel._send(FrameType.TCP_INIT, payload);
-        resolve(tunnel);
       });
 
       channel.addEventListener('error', () => {
-        reject(new Error('Tunnel connection failed'));
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timeout);
+        reject(new Error('DataChannel error'));
       });
 
       channel._onmessage = (ev: Event) => {
-        const msg = ev as MessageEvent;
-        const data = new Uint8Array(msg.data);
-        tunnel.onData?.(data);
+        try {
+          const frame = (ev as MessageEvent).data as Frame;
+          if (!resolved && frame.type === FrameType.TCP_INIT) {
+            resolved = true;
+            clearTimeout(timeout);
+            log.info(`[TCP] <<< TCP_INIT ack identifier=${channel.identifier}`);
+            resolve(tunnel);
+            return;
+          }
+          if (frame.type === FrameType.TCP_ERROR) {
+            const errorType = frame.payload[0];
+            const errorMsg = new TextDecoder().decode(frame.payload.slice(1));
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timeout);
+              reject(new Error(errorMsg));
+              return;
+            }
+            tunnel.onError?.(errorType, errorMsg);
+            return;
+          }
+          log.info(`[TCP Proxy] [${label}] TCP_DATA received (${frame.payloadLength} bytes), forwarding to tunnel.onData`);
+          const rawStr = new TextDecoder().decode(frame.payload.slice(0, Math.min(frame.payload.length, 500)));
+          console.log(`[TCP Proxy] [${label}] RAW data (first 500):`, JSON.stringify(rawStr));
+          console.log(`[TCP Proxy] [${label}] tunnel.onData is`, typeof tunnel.onData, tunnel.onData ? 'SET' : 'NULL');
+          tunnel.onData?.(new Uint8Array(frame.payload));
+        } catch (e) {
+          log.error(`[TCP Proxy] [${label}] _onmessage error:`, e);
+        }
       };
 
       this.conn.addEventListener('close', () => {

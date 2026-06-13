@@ -197,6 +197,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     const frame = FrameCodec.create(opcode, this.identifier, data, 0);
     const buffer = frame.toBuffer();
     this._upBytes += buffer.byteLength;
+    log.debug(`[TCP] >>> ${this.identifier} ${FrameType[opcode]} payload=${frame.payloadLength}`);
     this.ws.send(buffer);
   }
 
@@ -218,7 +219,12 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
   private _onMessage(ev: MessageEvent) {
     const frame = FrameCodec.decode(ev.data as ArrayBuffer);
     this._downBytes += ev.data.byteLength;
-    log.debug(frame.identifier, FrameType[frame.type], frame.payloadLength);
+    const isPingPong = frame.type === FrameType.PING || frame.type === FrameType.PONG;
+    if (isPingPong) {
+      log.debug(`[TCP] <<< ${frame.identifier} ${FrameType[frame.type]} payload=${frame.payloadLength}`);
+    } else {
+      log.info(`[TCP] <<< ${frame.identifier} ${FrameType[frame.type]} payload=${frame.payloadLength}`);
+    }
     if (frame.identifier === this.identifier) {
       const event = new MessageEvent('message', { data: this.decode(frame) });
       this.dispatchEvent(event);
@@ -231,6 +237,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
       dataChannel.dispatchEvent(event);
       return event;
     }
+    log.warn(`[TCP] <<< ${frame.identifier} ${FrameType[frame.type]} - no matching DataChannel!`);
     return ev;
   }
 
@@ -258,7 +265,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     const pingTime = FrameCodec.buffer2number(frame.payload);
     this._lastPongTimestamp = Date.now();
     this._rtt = this._lastPongTimestamp - pingTime;
-    console.log(`[Network] RTT: ${this._rtt}ms`);
+    log.debug(`[TCP] <<< PONG RTT=${this._rtt}ms`);
     const event = new Event('pong', {});
     this.dispatchEvent(event);
     this.getAllDataChannels().forEach(channel => {

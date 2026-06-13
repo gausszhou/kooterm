@@ -7,12 +7,17 @@ export default defineConfig({
   server: {
     port: 3002,
     proxy: {
-      '/api/ws/terminal': {
+      '/portal-direct-api/ws/terminal': {
         target: 'ws://localhost:3001',
         changeOrigin: true,
         ws: true
       },
-      '/api/ws/vnc': {
+      '/portal-direct-api/ws/vnc': {
+        target: 'ws://localhost:3001',
+        changeOrigin: true,
+        ws: true
+      },
+      '/portal-direct-api/ws/tcp': {
         target: 'ws://localhost:3001',
         changeOrigin: true,
         ws: true
@@ -26,6 +31,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    assetsDir: 'portal-direct-assets',
     sourcemap: false
   }
 });

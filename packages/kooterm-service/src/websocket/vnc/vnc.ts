@@ -22,7 +22,8 @@ export class VNCServerSocket {
     logger.debug(identifier, '创建 VNC 连接');
     this.socket = net.createConnection({
       port: VNC_PORT,
-      host: VNC_HOST
+      host: VNC_HOST,
+      readableHighWaterMark: 65536,
     });
     this.identifier = identifier;
     // TCP 事件
@@ -56,7 +57,8 @@ export class VNCServerSocket {
   createSocket() {
     const socket = net.createConnection({
       port: VNC_PORT,
-      host: VNC_HOST
+      host: VNC_HOST,
+      readableHighWaterMark: 65536,
     });
     return socket;
   }

@@ -30,6 +30,10 @@ if (hasSsl) {
 }
 
 app.use(express.static(path.join(__dirname, "../../kooterm-portal/dist")));
+app.use('/portal-direct-assets', express.static(path.join(__dirname, "../../kooterm-portal/dist/portal-direct-assets"), {
+  maxAge: '1y',
+  immutable: true,
+}));
 
 // 根路径重定向到终端页面
 const index = (req: Request, res: Response) => {
@@ -56,7 +60,7 @@ if (hasSsl) {
   });
   server.listen(SSL_PORT, () => {
     console.log(`HTTPS 服务运行: https://localhost:${SSL_PORT}`);
-    console.log(`WS    wss://localhost:${SSL_PORT}/api/ws/terminal`);
+    console.log(`WS    wss://localhost:${SSL_PORT}/portal-direct-api/ws/terminal`);
   });
 } else {
   useWebSocket(server);
