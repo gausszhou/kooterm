@@ -1,54 +1,57 @@
 import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
-import loglevel, { LogLevelDesc } from 'loglevel';
-import { Frame, FrameCodec, FrameType } from '@kooterm/common';
+import { Frame, FrameCodec, FrameType, setLogger } from '@kooterm/common';
 import { isEcho, onEcho } from './echo.js';
 import { isTerminal, TerminalManager } from './terminal/manager.js';
 import { isVncMessage, VNCManager, onVncInit, onVncData } from './vnc/manager.js';
 import { TcpManager, isTcpMessage } from './tcp/manager.js';
 import { getClientIp } from '../utils.js';
+import { getLogger, getCommonLogger } from '../logger.js';
 
-const logger = loglevel.getLogger('WebSocketServer');
-logger.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || 'info');
+// 注入统一的 logger 到 common 包
+setLogger(getCommonLogger());
+
+const logger = getLogger('WS');
 
 const terminalManager = new TerminalManager(Number(process.env.SSH_MAX) || 5);
 const vncManager = new VNCManager();
 const tcpManager = new TcpManager();
 
 function handleTerminal(ws: WebSocket, frame: Frame) {
+  const id = frame.identifier;
   switch (frame.type) {
     case FrameType.TERMINAL_INIT: {
       const sessionId = new TextDecoder().decode(frame.payload);
-      logger.debug(frame.identifier, 'TERMINAL_INIT session:', sessionId);
-      terminalManager.initSession(sessionId, ws, frame.identifier).then(() => {
-        const resp = FrameCodec.create(FrameType.TERMINAL_INIT, frame.identifier, new Uint8Array(0), 0);
+      logger.debug(`[WS] [${id}] TERMINAL_INIT session=${sessionId}`);
+      terminalManager.initSession(sessionId, ws, id).then(() => {
+        const resp = FrameCodec.create(FrameType.TERMINAL_INIT, id, new Uint8Array(0), 0);
         ws.send(resp.toBuffer());
-      }).catch(err => logger.error(frame.identifier, 'SSH init failed:', err));
+      }).catch(err => logger.error(`[WS] [${id}] SSH init failed:`, err));
       break;
     }
     case FrameType.TERMINAL_REFRESH: {
       const sessionId = new TextDecoder().decode(frame.payload);
-      logger.debug(frame.identifier, 'TERMINAL_REFRESH session:', sessionId);
-      terminalManager.initSession(sessionId, ws, frame.identifier).then(() => {
-        const resp = FrameCodec.create(FrameType.TERMINAL_REFRESH, frame.identifier, new Uint8Array(0), 0);
+      logger.debug(`[WS] [${id}] TERMINAL_REFRESH session=${sessionId}`);
+      terminalManager.initSession(sessionId, ws, id).then(() => {
+        const resp = FrameCodec.create(FrameType.TERMINAL_REFRESH, id, new Uint8Array(0), 0);
         ws.send(resp.toBuffer());
-      }).catch(err => logger.error(frame.identifier, 'SSH refresh failed:', err));
+      }).catch(err => logger.error(`[WS] [${id}] SSH refresh failed:`, err));
       break;
     }
     case FrameType.TERMINAL_DATA: {
-      const sid = terminalManager.getSessionId(frame.identifier);
-      if (!sid) { logger.debug(frame.identifier, '会话未找到, 忽略 DATA'); break; }
+      const sid = terminalManager.getSessionId(id);
+      if (!sid) { logger.debug(`[WS] [${id}] session not found, DATA ignored`); break; }
       const input = new TextDecoder().decode(frame.payload);
       const terminal = terminalManager.getSession(sid);
       if (terminal) terminal.write(input);
       break;
     }
     case FrameType.TERMINAL_RESIZE: {
-      const sid = terminalManager.getSessionId(frame.identifier);
-      if (!sid) { logger.debug(frame.identifier, '会话未找到, 忽略 RESIZE'); break; }
+      const sid = terminalManager.getSessionId(id);
+      if (!sid) { logger.debug(`[WS] [${id}] session not found, RESIZE ignored`); break; }
       const cols = frame.payload[0] << 8 | frame.payload[1];
       const rows = frame.payload[2] << 8 | frame.payload[3];
-      logger.debug(frame.identifier, `TERMINAL_RESIZE cols=${cols} rows=${rows}`);
+      logger.debug(`[WS] [${id}] TERMINAL_RESIZE cols=${cols} rows=${rows}`);
       const terminal = terminalManager.getSession(sid);
       if (terminal) terminal.resize(cols, rows);
       break;
@@ -57,11 +60,12 @@ function handleTerminal(ws: WebSocket, frame: Frame) {
 }
 
 function handleVnc(ws: WebSocket, frame: Frame) {
+  const id = frame.identifier;
   if (process.env.VNC_ENABLE !== 'true') {
-    logger.debug(frame.identifier, 'VNC 未启用');
+    logger.debug(`[WS] [${id}] VNC disabled`);
     return;
   }
-  const vncSocket = vncManager.getVncSocket(ws, frame.identifier);
+  const vncSocket = vncManager.getVncSocket(ws, id);
   if (frame.type === FrameType.VNC_INIT) {
     onVncInit(frame, vncSocket);
   } else if (frame.type === FrameType.VNC_DATA) {
@@ -70,12 +74,13 @@ function handleVnc(ws: WebSocket, frame: Frame) {
 }
 
 function handleTcp(ws: WebSocket, frame: Frame) {
+  const id = frame.identifier;
   if (frame.type === FrameType.TCP_INIT) {
     const { host, port } = FrameCodec.decodeTarget(frame.payload);
-    logger.info(frame.identifier, `TCP_INIT ${host}:${port}`);
-    tcpManager.getOrCreate(ws, frame.identifier, host, port);
+    logger.info(`[WS] [${id}] TCP_INIT ${host}:${port}`);
+    tcpManager.getOrCreate(ws, id, host, port);
   } else if (frame.type === FrameType.TCP_DATA) {
-    tcpManager.write(frame.identifier, frame.payload);
+    tcpManager.write(id, frame.payload);
   }
 }
 
@@ -90,17 +95,17 @@ export function useWebSocket(server: http.Server | http.Server[]) {
     });
   });
   wss.addListener('headers', (headers, req) => {
-    logger.debug('WebSocket请求头:', getClientIp(req), headers);
+    logger.debug(`[WS] headers ${getClientIp(req)}`, headers);
   });
   wss.addListener('listening', () => {
-    logger.info('WebSocket服务器已启动，等待客户端连接...');
+    logger.info('[WS] server ready');
   });
   wss.addListener('connection', (ws: WebSocket, req) => {
     const ip = getClientIp(req);
-    logger.info('用户连接:', ip);
+    logger.info(`[WS] connect ${ip}`);
 
     ws.on('error', err => {
-      logger.error('WebSocket 错误:', ip, err.message);
+      logger.error(`[WS] error ${ip}: ${err.message}`);
     });
 
     ws.on('message', (message: ArrayBuffer) => {
@@ -108,11 +113,11 @@ export function useWebSocket(server: http.Server | http.Server[]) {
       try {
         frame = FrameCodec.decode(message);
       } catch (err) {
-        logger.error('帧解码失败:', ip, err);
+        logger.error(`[WS] decode error ${ip}:`, err);
         return;
       }
 
-      logger.info(frame.identifier, FrameType[frame.type], 'payload=' + frame.payloadLength);
+      logger.info(`[WS] [${frame.identifier}] ${FrameType[frame.type]} payload=${frame.payloadLength}`);
 
       if (isEcho(frame)) {
         onEcho(ws, frame);
@@ -134,11 +139,11 @@ export function useWebSocket(server: http.Server | http.Server[]) {
         return;
       }
 
-      logger.warn(frame.identifier, '未知帧类型:', FrameType[frame.type]);
+      logger.warn(`[WS] [${frame.identifier}] unknown type ${FrameType[frame.type]}`);
     });
 
     ws.addEventListener('close', () => {
-      logger.info('用户断开连接:', ip);
+      logger.info(`[WS] disconnect ${ip}`);
       terminalManager.removeConnection(ws);
       vncManager.removeConnection(ws);
       tcpManager.removeConnection();

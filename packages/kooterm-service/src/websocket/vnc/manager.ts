@@ -1,16 +1,16 @@
 import { Frame, FrameCodec, FrameType } from '@kooterm/common';
 import WebSocket from 'ws';
-import loglevel from 'loglevel';
 import { VNCServerSocket } from './vnc.js';
+import { getLogger } from '../../logger.js';
 
-const logger = loglevel.getLogger('VNC');
+const logger = getLogger('VNCManager');
 
 export const onVncInit = (frame: Frame, socket: VNCServerSocket) => {
-  logger.debug(frame.identifier, '收到 VNC_INIT 帧:', frame.payloadLength);
+  logger.debug(`[VNCManager] [${frame.identifier}] VNC_INIT payload=${frame.payloadLength}`);
 };
 
 export const onVncData = (frame: Frame, socket: VNCServerSocket) => {
-  logger.debug(frame.identifier, '收到 VNC_DATA 帧:', frame.payloadLength);
+  logger.debug(`[VNCManager] [${frame.identifier}] VNC_DATA payload=${frame.payloadLength}`);
   socket.write(frame.payload);
 };
 

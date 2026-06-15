@@ -1,9 +1,8 @@
 import net from 'net';
 import { TcpErrorType } from '@kooterm/common';
-import loglevel, { LogLevelDesc } from 'loglevel';
+import { getLogger } from '../../logger.js';
 
-const logger = loglevel.getLogger('TcpProxySocket');
-logger.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || 'info');
+const logger = getLogger('TcpProxy');
 
 function mapErrorType(code: string | undefined): number {
   switch (code) {
@@ -29,26 +28,26 @@ export class TcpProxySocket {
   public onConnect: (() => void) | null = null;
 
   constructor(identifier: number, host: string, port: number) {
-    logger.debug(identifier, `TCP 代理: ${host}:${port}`);
+    logger.debug(`[TcpProxySocket] [${identifier}] connect ${host}:${port}`);
     this.socket = net.createConnection({ host, port });
     this.identifier = identifier;
     this.port = port;
 
     this.socket.on('connect', () => {
-      logger.debug(identifier, 'TCP 连接成功');
+      logger.debug(`[TcpProxySocket] [${identifier}] connected`);
       this.onConnect?.();
     });
 
     this.socket.on('data', this._onData.bind(this));
 
     this.socket.on('close', () => {
-      logger.debug(identifier, 'TCP 连接关闭');
+      logger.debug(`[TcpProxySocket] [${identifier}] closed`);
       this.onError?.(TcpErrorType.CLOSED, 'Connection closed');
       this.onClose?.();
     });
 
     this.socket.on('error', err => {
-      logger.debug(identifier, 'TCP 错误:', err.message);
+      logger.debug(`[TcpProxySocket] [${identifier}] error: ${err.message}`);
       const errType = mapErrorType((err as NodeJS.ErrnoException).code);
       this.onError?.(errType, err.message);
       this.socket.end();
@@ -58,7 +57,7 @@ export class TcpProxySocket {
   _onData(data: Uint8Array) {
     const head = new TextDecoder().decode(data.slice(0, Math.min(data.length, 512)));
     const tail = data.length > 1024 ? '\n... ...\n' + new TextDecoder().decode(data.slice(-512)) : '';
-    logger.debug(this.identifier, `[TCP] <<< ${data.length} bytes:\n${head}${tail}`);
+    logger.debug(`[TcpProxySocket] [${this.identifier}] data ${data.length} bytes:\n${head}${tail}`);
     this.onData(data);
   }
 

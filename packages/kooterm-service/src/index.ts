@@ -9,6 +9,10 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { getLogger } from './logger.js';
+
+const logger = getLogger('App');
+
 // 动态导入确保 dotenv 在其他模块读取 env 前已加载
 const { useWebSocket } = await import("./websocket/index.js");
 
@@ -59,18 +63,18 @@ if (hasSsl) {
   const httpServer = http.createServer(app);
   useWebSocket([httpServer, server]);
   httpServer.listen(PORT, () => {
-    console.log(`HTTP  服务运行: http://localhost:${PORT}`);
-    console.log(`API 健康检查: http://localhost:${PORT}/health`);
+    logger.info(`HTTP  :${PORT}`);
+    logger.info(`Health: http://localhost:${PORT}/health`);
   });
   server.listen(SSL_PORT, () => {
-    console.log(`HTTPS 服务运行: https://localhost:${SSL_PORT}`);
-    console.log(`WS    wss://localhost:${SSL_PORT}/portal-direct-api/ws/terminal`);
+    logger.info(`HTTPS :${SSL_PORT}`);
+    logger.info(`WS    :${SSL_PORT}/portal-direct-api/ws/terminal`);
   });
 } else {
   useWebSocket(server);
   server.listen(PORT, () => {
-    console.log(`Web 服务运行: http://localhost:${PORT}`);
-    console.log(`API 健康检查: http://localhost:${PORT}/health`);
+    logger.info(`HTTP  :${PORT}`);
+    logger.info(`Health: http://localhost:${PORT}/health`);
   });
 }
 

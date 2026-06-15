@@ -1,7 +1,7 @@
 import { Client, ClientChannel } from 'ssh2';
-import loglevel from 'loglevel';
+import { getLogger } from '../../logger.js';
 
-const logger = loglevel.getLogger('SSH');
+const logger = getLogger('Terminal');
 
 export interface SshConfig {
   host: string;
@@ -25,7 +25,7 @@ export class Terminal {
     this.shell = channel;
 
     channel.stderr.on('data', (data: Buffer) => {
-      logger.debug(`[${this.sessionId}] stderr:`, data.toString('utf-8'));
+      logger.debug(`[Terminal] [${this.sessionId}] stderr:`, data.toString('utf-8'));
       this.onData?.(data.toString('utf-8'));
     });
 
@@ -34,40 +34,40 @@ export class Terminal {
     });
 
     channel.on('close', () => {
-      logger.info(`[${this.sessionId}] Channel closed`);
+      logger.info(`[Terminal] [${this.sessionId}] channel closed`);
       this.shell = null;
     });
   }
 
   init(config: SshConfig): Promise<void> {
-    logger.info(`[${this.sessionId}] SSH connecting to ${config.host}:${config.port} as ${config.username}`);
+    logger.info(`[Terminal] [${this.sessionId}] connect ${config.host}:${config.port} as ${config.username}`);
     return new Promise((resolve, reject) => {
       if (this.ssh) this.ssh.end();
       this.ssh = new Client();
 
       this.ssh.on('ready', () => {
-        logger.info(`[${this.sessionId}] SSH connected`);
+        logger.info(`[Terminal] [${this.sessionId}] ssh ready`);
         this.ssh.shell({ term: 'xterm-256color' }, (err, channel) => {
           if (err) {
-            logger.error(`[${this.sessionId}] shell() error:`, err);
+            logger.error(`[Terminal] [${this.sessionId}] shell error:`, err);
             this.onData?.(`\r\n\x1b[31mShell 打开失败: ${err.message}\x1b[0m\r\n`);
             reject(err);
             return;
           }
           this.bindChannel(channel);
-          logger.info(`[${this.sessionId}] Shell opened`);
+          logger.info(`[Terminal] [${this.sessionId}] shell opened`);
           resolve();
         });
       });
 
       this.ssh.on('error', (err) => {
-        logger.error(`[${this.sessionId}] SSH error:`, err);
+        logger.error(`[Terminal] [${this.sessionId}] ssh error:`, err);
         this.onData?.(`\r\n\x1b[31mSSH 连接失败: ${err.message}\x1b[0m\r\n`);
         reject(err);
       });
 
       this.ssh.on('end', () => {
-        logger.info(`[${this.sessionId}] SSH end`);
+        logger.info(`[Terminal] [${this.sessionId}] ssh end`);
       });
 
       this.ssh.connect({
@@ -77,7 +77,7 @@ export class Terminal {
         password: config.password,
         readyTimeout: 10000,
       });
-      logger.info(`[${this.sessionId}] SSH connect() called`);
+      logger.info(`[Terminal] [${this.sessionId}] ssh connect() called`);
 
       setTimeout(() => {
         if (!this.shell) {
@@ -104,7 +104,7 @@ export class Terminal {
   }
 
   openShell(config: SshConfig): Promise<void> {
-    logger.info(`[${this.sessionId}] Opening new shell...`);
+    logger.info(`[Terminal] [${this.sessionId}] open shell`);
     if (this.shell) {
       this.shell.close();
       this.shell = null;
@@ -112,12 +112,12 @@ export class Terminal {
     return new Promise((resolve, reject) => {
       this.ssh.shell({ term: 'xterm-256color' }, (err, channel) => {
         if (err) {
-          logger.error(`[${this.sessionId}] openShell() error:`, err);
+          logger.error(`[Terminal] [${this.sessionId}] openShell error:`, err);
           reject(err);
           return;
         }
         this.bindChannel(channel);
-        logger.info(`[${this.sessionId}] New shell opened`);
+        logger.info(`[Terminal] [${this.sessionId}] shell opened`);
         resolve();
       });
     });
