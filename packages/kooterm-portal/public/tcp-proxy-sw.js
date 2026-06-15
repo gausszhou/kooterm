@@ -42,7 +42,7 @@ function getHeader(headers, name) {
 function rewriteHtml(html, targetHost, targetPort) {
   const prefix = `${PROXY_PREFIX}${targetHost}:${targetPort}`;
   return html.replace(
-    /((?:href|src|action|poster|data)=["'])(\/(?!\/|portal-direct-assets\/))/g,
+    /((?:href|src|action|poster|data)=["'])(\/(?!["']|\/|portal-direct-assets\/|portal-direct-api\/|tcp-proxy-sw\.js))/g,
     `$1${prefix}$2`
   );
 }
@@ -59,6 +59,7 @@ function isTextResponse(contentType) {
 function shouldBypassProxy(pathname) {
   return     pathname.startsWith('/portal-direct-api') ||
     pathname.startsWith('/portal-direct-assets/') ||
+    pathname === '/' ||
     pathname === '/tcp-proxy-sw.js';
 }
 
@@ -149,6 +150,8 @@ self.addEventListener('message', (event) => {
 
     pending.headers = headers;
     pending.textResponse = isTextResponse(contentType);
+    pending.contentLength = parseInt(getHeader(headers, 'content-length'), 10) || 0;
+    pending.receivedBytes = 0;
     if (pending.textResponse) {
       pending.textChunks = [];
     }
@@ -171,11 +174,32 @@ self.addEventListener('message', (event) => {
     return;
   }
 
+  function flushTextResponse(p) {
+    if (!p.textResponse || !p.textChunks) return;
+    const total = p.receivedBytes;
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (const c of p.textChunks) {
+      merged.set(c, offset);
+      offset += c.length;
+    }
+    const text = new TextDecoder().decode(merged);
+    const rewritten = rewriteHtml(text, p.host, p.port);
+    p.controller.enqueue(new TextEncoder().encode(rewritten));
+    p.controller.close();
+  }
+
   if (type === 'tcp-chunk') {
     const chunk = new Uint8Array(event.data.data);
 
     if (pending.textResponse) {
       pending.textChunks.push(chunk);
+      pending.receivedBytes += chunk.length;
+
+      if (pending.contentLength > 0 && pending.receivedBytes >= pending.contentLength) {
+        pendingRequests.delete(id);
+        flushTextResponse(pending);
+      }
       return;
     }
 
@@ -185,21 +209,9 @@ self.addEventListener('message', (event) => {
 
   if (type === 'tcp-done') {
     pendingRequests.delete(id);
-
-    if (pending.textResponse && pending.textChunks) {
-      const total = pending.textChunks.reduce((s, c) => s + c.length, 0);
-      const merged = new Uint8Array(total);
-      let offset = 0;
-      for (const c of pending.textChunks) {
-        merged.set(c, offset);
-        offset += c.length;
-      }
-      const text = new TextDecoder().decode(merged);
-      const rewritten = rewriteHtml(text, pending.host, pending.port);
-      pending.controller.enqueue(new TextEncoder().encode(rewritten));
-    }
-
-    if (pending.controller) {
+    if (pending.textResponse) {
+      flushTextResponse(pending);
+    } else {
       pending.controller.close();
     }
     return;
