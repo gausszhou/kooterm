@@ -1,14 +1,12 @@
 <template>
   <div class="vnc-container">
-    <div class="terminal-header">
-            <div class="header-left">
-        <span class="terminal-title">KooTerm</span>
-      </div>
-      <NetworkInfo ref="networkRef" :connection="connection"></NetworkInfo>
-    </div>
-    <!-- VNC 显示区域 -->
+    <StatusBar
+      title="KooTerm"
+      :connected="connected"
+      :connecting="connecting"
+      :connection="connection"
+    />
     <div ref="screenRef" class="vnc-screen"></div>
-    <!-- 连接状态 -->
     <div v-if="!connected" class="connection-status">
       <Loading v-if="connecting" message="Connecting to VNC server..." />
       <div v-else class="disconnected">
@@ -19,8 +17,8 @@
 </template>
 
 <script lang="ts" setup>
+import StatusBar from '@/components/StatusBar.vue';
 import Loading from '@/components/Loading.vue';
-import NetworkInfo from '@/components/NetworkInfo.vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRfb } from '@/hooks/useRfb';
 
@@ -32,7 +30,7 @@ const props = defineProps({
 });
 
 const screenRef = ref<HTMLDivElement>();
-const { connected, connecting, networkRef, connection, init, destroy } = useRfb(screenRef);
+const { connected, connecting, connection, init, destroy } = useRfb(screenRef);
 
 onMounted(() => {
   init(props.url);
@@ -51,28 +49,11 @@ onUnmounted(() => {
   height: 100vh;
 }
 
-.terminal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 32px;
-  background-color: #141414;
-  padding: 0 8px;
-  border-bottom: 1px solid #333;
-  gap: 10px;
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
-}
-
 .vnc-screen {
   width: 100%;
   height: calc(100svh - 50px);
   height: calc(100vh - 50px);
   min-height: 400px;
-}
-
-.terminal-title {
-  font-weight: bold;
-  color: #cccccc;
 }
 
 .connection-status {
