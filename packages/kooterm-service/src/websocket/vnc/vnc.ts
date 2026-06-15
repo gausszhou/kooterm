@@ -2,8 +2,6 @@ import net from 'net';
 import WebSocket from 'ws';
 import { analyzeVNCMessage } from '@kooterm/common';
 import loglevel, { LogLevelDesc } from 'loglevel';
-import dotenv from 'dotenv';
-dotenv.config();
 
 const VNC_PORT = Number(process.env.VNC_PORT) || 5900;
 const VNC_HOST = process.env.TARGET_HOST || '127.0.0.1';
