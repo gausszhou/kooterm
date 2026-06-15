@@ -42,6 +42,9 @@ export function useTcpProxy() {
       const portStr = targetPort === 80 || targetPort === 443 ? '' : `:${targetPort}`;
       allHeaders['Host'] = `${targetHost}${portStr}`;
     }
+    if (!Object.keys(allHeaders).some(k => k.toLowerCase() === 'connection')) {
+      allHeaders['Connection'] = 'close';
+    }
 
     const raw = HttpCodec.encodeRequest(method, reqPath, allHeaders, body ? new Uint8Array(body) : undefined);
     logger.info(`[TCP Proxy] >>> [${id}] ${method} ${targetHost}:${targetPort}${reqPath} (${raw.length} bytes)`);
@@ -51,12 +54,9 @@ export function useTcpProxy() {
     let headersSent = false;
     let done = false;
 
-    let headerTimeout: ReturnType<typeof setTimeout> | undefined;
-
     const cleanup = () => {
       if (done) return;
       done = true;
-      clearTimeout(headerTimeout);
       pendingAborts.delete(abort);
       tunnel?.close();
     };
@@ -87,10 +87,6 @@ export function useTcpProxy() {
         }
       };
 
-      headerTimeout = setTimeout(() => {
-        sendError('Header timeout (10s)');
-      }, 10000);
-
       tunnel.onData = (chunk) => {
         if (done) return;
 
@@ -99,7 +95,6 @@ export function useTcpProxy() {
           const parsed = HttpCodec.parseHeaders(buffer);
           if (!parsed) return;
 
-          clearTimeout(headerTimeout);
           headersSent = true;
           logger.info(`[TCP Proxy] <<< [${id}] ${parsed.statusCode} ${parsed.statusText}`);
 

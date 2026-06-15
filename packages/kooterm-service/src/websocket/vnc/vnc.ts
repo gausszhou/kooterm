@@ -23,7 +23,6 @@ export class VNCServerSocket {
     this.socket = net.createConnection({
       port: VNC_PORT,
       host: VNC_HOST,
-      readableHighWaterMark: 65536,
     });
     this.identifier = identifier;
     // TCP 事件
@@ -58,7 +57,6 @@ export class VNCServerSocket {
     const socket = net.createConnection({
       port: VNC_PORT,
       host: VNC_HOST,
-      readableHighWaterMark: 65536,
     });
     return socket;
   }

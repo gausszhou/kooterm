@@ -42,7 +42,7 @@ docker-compose up -d --build kooterm # 只重建 kooterm
 
 **前端（portal）**
 - Vue 3 + Vue Router + Vite
-- 路由：`/terminal`, `/vnc`, `/tcp`
+- 路由：`/terminal`, `/desktop`, `/opencode`, `/openvscode`
 - Service Worker `/tcp-proxy-sw.js`
   - 拦截 `/tcp-proxy/{host}:{port}/*`（通过 `parseUrl`）
   - 拦截所有来自已代理 iframe 的非 `/api*`、非 `/portal-direct-assets/*` 请求（通过 `proxySessions` 按 `event.clientId` 匹配）

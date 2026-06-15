@@ -12,12 +12,16 @@ const router = createRouter({
       component: () => import('@/views/terminal.vue')
     },
     {
-      path: '/vnc',
+      path: '/desktop',
       component: () => import('@/views/vnc.vue')
     },
     {
-      path: '/tcp',
-      component: () => import('@/views/tcp.vue')
+      path: '/opencode',
+      component: () => import('@/views/opencode.vue')
+    },
+    {
+      path: '/openvscode',
+      component: () => import('@/views/openvscode.vue')
     }
   ]
 });
