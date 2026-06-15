@@ -32,9 +32,8 @@ services:
     environment:
       LOG_LEVEL: debug
       VNC_ENABLE: "true"
-      VNC_HOST: debian-xfce-vnc
+      TARGET_HOST: debian-xfce-vnc
       VNC_PORT: "5901"
-      SSH_HOST: debian-xfce-vnc
       SSH_PORT: "22"
       SSH_USER: user
       SSH_PASS: user
