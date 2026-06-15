@@ -1,5 +1,5 @@
 <template>
-  <TcpViewer />
+  <TcpViewer title="OpenVSCode" :port="10800" />
 </template>
 
 <script setup>
