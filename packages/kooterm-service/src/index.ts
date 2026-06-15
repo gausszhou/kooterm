@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import type { Express, Request, Response } from "express";
 import express from "express";
 import http from "http";
@@ -6,7 +9,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { useWebSocket } from "./websocket/index.js";
+// 动态导入确保 dotenv 在其他模块读取 env 前已加载
+const { useWebSocket } = await import("./websocket/index.js");
 
 // 获取当前文件的目录路径（ESM替代__dirname）
 const __filename = fileURLToPath(import.meta.url);
