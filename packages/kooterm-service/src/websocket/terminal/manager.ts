@@ -1,9 +1,9 @@
 import { Frame, FrameCodec, FrameType } from '@kooterm/common';
 import WebSocket from 'ws';
-import loglevel from 'loglevel';
 import { Terminal, SshConfig } from './terminal.js';
+import { getLogger } from '../../logger.js';
 
-const logger = loglevel.getLogger('TerminalManager');
+const logger = getLogger('TerminalManager');
 
 const SSH_HOST = process.env.TARGET_HOST || 'localhost';
 const SSH_PORT = Number(process.env.SSH_PORT) || 22;
@@ -18,7 +18,7 @@ const onTerminalData = (data: string, terminal: Terminal, ws: WebSocket, identif
   if (ws.readyState !== WebSocket.OPEN) return;
   const frame = FrameCodec.create(FrameType.TERMINAL_DATA, identifier, new TextEncoder().encode(data), 0);
   ws.send(frame.toBuffer());
-  logger.debug(identifier, `[${terminal.sessionId}] -> 前端 ${data.length} bytes`);
+  logger.debug(`[TerminalManager] [${identifier}] -> client ${data.length} bytes`);
 };
 
 export const isTerminal = (frame: Frame) => {
@@ -36,7 +36,7 @@ export class TerminalManager {
 
   constructor(maxSshConnections: number = 5) {
     this.maxSshConnections = maxSshConnections;
-    logger.info(`最大 SSH 连接数: ${maxSshConnections}`);
+    logger.info(`[TerminalManager] max sessions: ${maxSshConnections}`);
   }
 
   getSession(sessionId: string): Terminal | undefined {
@@ -46,7 +46,7 @@ export class TerminalManager {
   private evictLRU() {
     const key = this.sessions.keys().next().value;
     if (key !== undefined) {
-      logger.warn(`LRU 淘汰会话: ${key} (当前 ${this.sessions.size} 个)`);
+      logger.warn(`[TerminalManager] evict ${key} (${this.sessions.size} sessions)`);
       const subs = this.sessionSubscribers.get(key);
       if (subs) {
         for (const ws of subs) {
@@ -65,7 +65,7 @@ export class TerminalManager {
 
     const old = this.sessions.get(sessionId);
     if (old) {
-      logger.info(identifier, `[${sessionId}] 已有旧会话，关闭旧连接`);
+      logger.info(`[TerminalManager] [${sessionId}] replace old session`);
       const subs = this.sessionSubscribers.get(sessionId);
       if (subs) {
         for (const s of subs) {
@@ -88,9 +88,9 @@ export class TerminalManager {
     terminal.onData = (data: string) => onTerminalData(data, terminal, ws, identifier);
     this.sessions.set(sessionId, terminal);
 
-    logger.info(identifier, `[${sessionId}] 开始 SSH 连接 ${SSH_HOST}:${SSH_PORT} 用户=${SSH_USER}`);
+    logger.info(`[TerminalManager] [${sessionId}] connect ${SSH_HOST}:${SSH_PORT} user=${SSH_USER}`);
     await terminal.init(sshConfig());
-    logger.info(identifier, `[${sessionId}] SSH 连接成功`);
+    logger.info(`[TerminalManager] [${sessionId}] connected`);
 
     return terminal;
   }
@@ -113,7 +113,7 @@ export class TerminalManager {
   }
 
   debug() {
-    logger.info(`当前会话数: ${this.sessions.size}/${this.maxSshConnections}`);
+    logger.info(`[TerminalManager] sessions: ${this.sessions.size}/${this.maxSshConnections}`);
     for (const [id, term] of this.sessions) {
       logger.info(`  ${id} shell=${term.shell !== null}`);
     }

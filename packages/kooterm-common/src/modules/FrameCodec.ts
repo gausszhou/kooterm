@@ -1,5 +1,6 @@
 import { FrameType } from '../types.js';
 import { Frame, FRAME_TYPE_AT, REMOTE_PORT_AT, PAYLOAD_LENGTH_AT, IDENTIFIER_AT } from './Frame.js';
+import { log } from '../logger.js';
 
 export class FrameCodec {
   static create(
@@ -26,7 +27,7 @@ export class FrameCodec {
 
   static decode(buf: ArrayBuffer): Frame {
     if (buf.byteLength < Frame.HeaderSize) {
-      console.error(
+      log.error(
         `Data too short: expected at least ${Frame.HeaderSize} bytes, got ${buf.byteLength}`
       );
     }
@@ -39,7 +40,7 @@ export class FrameCodec {
     const identifier = view.getUint32(IDENTIFIER_AT, false);
 
     if (buf.byteLength < Frame.HeaderSize + payloadLength) {
-      console.error(
+      log.error(
         `Incomplete data: expected ${
           Frame.HeaderSize + payloadLength
         } bytes, got ${buf.byteLength}`
@@ -52,7 +53,7 @@ export class FrameCodec {
     );
 
     if (!Object.values(FrameType).includes(type)) {
-      console.log(`Invalid frame type: ${type}`);
+      log.warn(`Invalid frame type: ${type}`);
     }
 
     const frame = new Frame(type, identifier, payload, remotePort);

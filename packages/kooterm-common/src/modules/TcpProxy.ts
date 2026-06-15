@@ -105,10 +105,7 @@ export class TcpProxy {
             tunnel.onError?.(errorType, errorMsg);
             return;
           }
-          log.info(`[TCP Proxy] [${label}] TCP_DATA received (${frame.payloadLength} bytes), forwarding to tunnel.onData`);
-          const rawStr = new TextDecoder().decode(frame.payload.slice(0, Math.min(frame.payload.length, 500)));
-          console.log(`[TCP Proxy] [${label}] RAW data (first 500):`, JSON.stringify(rawStr));
-          console.log(`[TCP Proxy] [${label}] tunnel.onData is`, typeof tunnel.onData, tunnel.onData ? 'SET' : 'NULL');
+          log.debug(`[TCP Proxy] [${label}] TCP_DATA received (${frame.payloadLength} bytes), forwarding to tunnel.onData`);
           tunnel.onData?.(new Uint8Array(frame.payload));
         } catch (e) {
           log.error(`[TCP Proxy] [${label}] _onmessage error:`, e);

@@ -1,13 +1,11 @@
 import net from 'net';
 import WebSocket from 'ws';
 import { analyzeVNCMessage } from '@kooterm/common';
-import loglevel, { LogLevelDesc } from 'loglevel';
+import { getLogger } from '../../logger.js';
 
 const VNC_PORT = Number(process.env.VNC_PORT) || 5900;
 const VNC_HOST = process.env.TARGET_HOST || '127.0.0.1';
-const logger = loglevel.getLogger('VNCServerSocket');
-
-logger.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || 'info');
+const logger = getLogger('VNCProxy');
 
 export class VNCServerSocket {
   private socket: net.Socket;
@@ -17,26 +15,25 @@ export class VNCServerSocket {
   public identifier: number;
 
   constructor(ws: WebSocket, identifier: number) {
-    logger.debug(identifier, '创建 VNC 连接');
+    logger.debug(`[VNCProxy] [${identifier}] connect ${VNC_HOST}:${VNC_PORT}`);
     this.socket = net.createConnection({
       port: VNC_PORT,
       host: VNC_HOST,
     });
     this.identifier = identifier;
-    // TCP 事件
     this.socket.on('connect', () => {
-      logger.debug('VNC 连接成功');
+      logger.debug(`[VNCProxy] [${identifier}] connected`);
     });
 
     this.socket.on('data', this._onData.bind(this));
 
     this.socket.on('close', () => {
-      logger.debug('VNC 连接关闭');
+      logger.debug(`[VNCProxy] [${identifier}] closed`);
       ws.close();
     });
 
     this.socket.on('error', err => {
-      logger.debug('VNC 连接错误:', err);
+      logger.debug(`[VNCProxy] [${identifier}] error:`, err);
       this.socket.end();
       ws.close();
     });
