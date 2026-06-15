@@ -5,7 +5,7 @@ import { Terminal, SshConfig } from './terminal.js';
 
 const logger = loglevel.getLogger('TerminalManager');
 
-const SSH_HOST = process.env.SSH_HOST || 'localhost';
+const SSH_HOST = process.env.TARGET_HOST || 'localhost';
 const SSH_PORT = Number(process.env.SSH_PORT) || 22;
 const SSH_USER = process.env.SSH_USER || 'user';
 const SSH_PASS = process.env.SSH_PASS || 'user';

@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const VNC_PORT = Number(process.env.VNC_PORT) || 5900;
-const VNC_HOST = process.env.VNC_HOST || '127.0.0.1';
+const VNC_HOST = process.env.TARGET_HOST || '127.0.0.1';
 const logger = loglevel.getLogger('VNCServerSocket');
 
 logger.setLevel((process.env.LOG_LEVEL as LogLevelDesc) || 'info');
