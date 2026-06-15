@@ -12,7 +12,7 @@ const router = createRouter({
       component: () => import('@/views/terminal.vue')
     },
     {
-      path: '/vnc',
+      path: '/desktop',
       component: () => import('@/views/vnc.vue')
     },
     {
