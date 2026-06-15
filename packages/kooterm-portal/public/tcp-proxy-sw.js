@@ -210,7 +210,11 @@ self.addEventListener('message', (event) => {
   if (type === 'tcp-done') {
     pendingRequests.delete(id);
     if (pending.textResponse) {
-      flushTextResponse(pending);
+      if (pending.contentLength > 0 && pending.receivedBytes < pending.contentLength) {
+        pending.controller.error(new Error('Incomplete response'));
+      } else {
+        flushTextResponse(pending);
+      }
     } else {
       pending.controller.close();
     }
