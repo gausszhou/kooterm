@@ -39,12 +39,18 @@ function getHeader(headers, name) {
   return '';
 }
 
+const WS_OVERRIDE_SCRIPT = '<script src="/ws-override.js"></script>';
+
 function rewriteHtml(html, targetHost, targetPort) {
   const prefix = `${PROXY_PREFIX}${targetHost}:${targetPort}`;
-  return html.replace(
+  let result = html.replace(
     /((?:href|src|action|poster|data)=["'])(\/(?!["']|\/|portal-direct-assets\/|portal-direct-api\/|tcp-proxy-sw\.js))/g,
     `$1${prefix}$2`
   );
+  if (!result.includes(WS_OVERRIDE_SCRIPT)) {
+    result = result.replace('</head>', `${WS_OVERRIDE_SCRIPT}\n</head>`);
+  }
+  return result;
 }
 
 function isTextResponse(contentType) {
@@ -60,7 +66,8 @@ function shouldBypassProxy(pathname) {
   return     pathname.startsWith('/portal-direct-api') ||
     pathname.startsWith('/portal-direct-assets/') ||
     pathname === '/' ||
-    pathname === '/tcp-proxy-sw.js';
+    pathname === '/tcp-proxy-sw.js' ||
+    pathname === '/ws-override.js';
 }
 
 self.addEventListener('fetch', (event) => {

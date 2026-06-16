@@ -1,5 +1,5 @@
 import { ref, shallowRef } from 'vue';
-import { TcpProxy, type TcpTunnel, type WebSocketConnection, TcpErrorType, HttpCodec } from '@kooterm/common';
+import { TcpProxy, WsProxy, type TcpTunnel, type WsSession, type WebSocketConnection, TcpErrorType, HttpCodec } from '@kooterm/common';
 import { getLogger } from 'loglevel';
 
 const logger = getLogger('useTcpProxy');
@@ -19,6 +19,12 @@ const ERROR_LABELS: Record<number, string> = {
   [TcpErrorType.OTHER]: 'Connection error',
 };
 
+interface WsSessionEntry {
+  session: WsSession;
+  source: MessageEventSource | null;
+  origin: string;
+}
+
 export function useTcpProxy() {
   const connected = ref(false);
   const connecting = ref(false);
@@ -27,10 +33,12 @@ export function useTcpProxy() {
   const error = ref<string>('');
 
   let proxy: TcpProxy | null = null;
+  let wsProxy: WsProxy | null = null;
   let swRegistration: ServiceWorkerRegistration | null = null;
   let targetHost = '';
   let targetPort = 0;
   const pendingAborts = new Set<() => void>();
+  const wsSessions = new Map<string, WsSessionEntry>();
 
   const onSwMessage = async (event: MessageEvent) => {
     const { type, id, method, path: reqPath, headers, body } = event.data;
@@ -135,6 +143,69 @@ export function useTcpProxy() {
     }
   };
 
+  function postToFrame(source: MessageEventSource | null, data: any) {
+    if (source && 'postMessage' in source) {
+      (source as any).postMessage(data, window.location.origin);
+    }
+  }
+
+  const onWindowMessage = async (event: MessageEvent) => {
+    const { type, sessionId, host, port, path, protocols, data, code, reason } = event.data || {};
+    if (!type || !type.startsWith('ws-')) return;
+
+    if (!proxy || !wsProxy) return;
+
+    if (type === 'ws-open') {
+      const url = `ws://${host}:${port}${path}`;
+      try {
+        const session = await wsProxy.connect(url, protocols);
+        wsSessions.set(sessionId, { session, source: event.source, origin: event.origin });
+
+        session.onmessage = (msg) => {
+          const entry = wsSessions.get(sessionId);
+          if (!entry) return;
+          const payload = msg instanceof Uint8Array ? msg.buffer : msg;
+          postToFrame(entry.source, { type: 'ws-message', sessionId, data: payload });
+        };
+
+        session.onclose = (c, r) => {
+          wsSessions.delete(sessionId);
+          postToFrame(event.source, { type: 'ws-closed', sessionId, code: c, reason: r });
+        };
+
+        session.onerror = (err) => {
+          wsSessions.delete(sessionId);
+          postToFrame(event.source, { type: 'ws-error', sessionId, message: err.message });
+        };
+
+        postToFrame(event.source, { type: 'ws-opened', sessionId, protocol: '' });
+        logger.info(`[WS Proxy] opened ${sessionId} ${url}`);
+      } catch (err: any) {
+        logger.error(`[WS Proxy] open failed ${sessionId}: ${err.message}`);
+        postToFrame(event.source, { type: 'ws-error', sessionId, message: err.message });
+      }
+      return;
+    }
+
+    if (type === 'ws-data') {
+      const entry = wsSessions.get(sessionId);
+      if (entry) {
+        const payload = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+        entry.session.send(payload);
+      }
+      return;
+    }
+
+    if (type === 'ws-close') {
+      const entry = wsSessions.get(sessionId);
+      if (entry) {
+        entry.session.close(code || 1000, reason || '');
+        wsSessions.delete(sessionId);
+      }
+      return;
+    }
+  };
+
   const init = async (url: string, host: string, port: number) => {
     connecting.value = true;
     error.value = '';
@@ -152,9 +223,12 @@ export function useTcpProxy() {
       logger.info('Service Worker registered');
 
       proxy = new TcpProxy(url);
+      wsProxy = new WsProxy(proxy);
       connection.value = proxy.connection;
       targetHost = host;
       targetPort = port;
+
+      window.addEventListener('message', onWindowMessage);
 
       connected.value = true;
       connecting.value = false;
@@ -170,6 +244,13 @@ export function useTcpProxy() {
   const destroy = () => {
     for (const abort of pendingAborts) abort();
     pendingAborts.clear();
+
+    for (const [id, entry] of wsSessions) {
+      entry.session.close(1001, 'Proxy destroyed');
+    }
+    wsSessions.clear();
+
+    window.removeEventListener('message', onWindowMessage);
 
     if (proxy) {
       proxy.close();
