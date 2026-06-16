@@ -67,7 +67,13 @@ function shouldBypassProxy(pathname) {
     pathname.startsWith('/portal-direct-assets/') ||
     pathname === '/' ||
     pathname === '/tcp-proxy-sw.js' ||
-    pathname === '/ws-override.js';
+    pathname === '/ws-override.js' ||
+    pathname === '/terminal' ||
+    pathname === '/desktop' ||
+    pathname === '/vnc' ||
+    pathname === '/opencode' ||
+    pathname === '/openvscode' ||
+    pathname === '/health';
 }
 
 self.addEventListener('fetch', (event) => {
