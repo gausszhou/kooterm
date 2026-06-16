@@ -1,3 +1,11 @@
+// TCP Proxy Service Worker
+//
+// 两种代理模式：
+//   1. /tcp-proxy/{host}:{port}/* — URL 前缀匹配，用于 iframe 加载远程页面。
+//      对 HTML 响应做 URL 重写和 ws-override 注入。
+//   2. session 代理 — 对已代理 iframe 的非 /tcp-proxy/* 子请求，
+//      直接流式透传，不做任何改写。
+
 const PROXY_PREFIX = '/tcp-proxy/';
 const TIMEOUT_MS = 10000;
 
@@ -53,6 +61,9 @@ function rewriteHtml(html, targetHost, targetPort) {
   return result;
 }
 
+// 是否缓冲文本响应（全量接收后再输出）。
+// 仅用于 /tcp-proxy/* 请求：HTML 需 rewrite，JS/CSS 缓冲后原样输出。
+// session 代理请求不缓冲，直接流式透传。
 function isTextResponse(contentType) {
   return contentType && (
     contentType.includes('text/html') ||
@@ -168,6 +179,8 @@ self.addEventListener('message', (event) => {
     pending.contentLength = parseInt(getHeader(headers, 'content-length'), 10) || 0;
     pending.receivedBytes = 0;
 
+    // 仅 /tcp-proxy/* 的文本响应需要缓冲（HTML rewrite / JS CSS 原样透传）
+    // session 代理的子资源全部直接流式输出
     if (pending.fromProxyPrefix && isTextResponse(contentType)) {
       pending.chunks = [];
     }
@@ -190,6 +203,9 @@ self.addEventListener('message', (event) => {
     return;
   }
 
+  // 将缓冲的文本响应输出到流。
+  // HTML：合并后 rewrite（URL 重写 + ws-override 注入）再输出。
+  // JS/CSS：缓冲的分块依次原样输出，不做改写。
   function flushResponse(p) {
     if (!p.chunks) return;
 
