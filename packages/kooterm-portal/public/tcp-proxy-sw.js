@@ -74,7 +74,7 @@ function isTextResponse(contentType) {
 }
 
 function shouldBypassProxy(pathname) {
-  return     pathname.startsWith('/portal-direct-api') ||
+  return     pathname.startsWith('/portal-direct-api/') ||
     pathname.startsWith('/portal-direct-assets/') ||
     pathname === '/' ||
     pathname === '/tcp-proxy-sw.js' ||
