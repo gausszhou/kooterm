@@ -22,3 +22,4 @@ export * from './modules/WebSocketDataChannel.js';
 export * from './modules/TcpProxy.js';
 export * from './modules/HttpCodec.js';
 export * from './modules/WebSocketCodec.js';
+export * from './modules/WsProxy.js';
