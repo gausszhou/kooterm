@@ -53,13 +53,8 @@ function rewriteHtml(html, targetHost, targetPort) {
   return result;
 }
 
-function isTextResponse(contentType) {
-  return contentType && (
-    contentType.includes('text/html') ||
-    contentType.includes('text/css') ||
-    contentType.includes('application/javascript') ||
-    contentType.includes('text/javascript')
-  );
+function isHtmlResponse(contentType) {
+  return contentType && contentType.includes('text/html');
 }
 
 function shouldBypassProxy(pathname) {
@@ -157,15 +152,15 @@ self.addEventListener('message', (event) => {
     const { status, statusText, headers } = event.data;
 
     const contentType = getHeader(headers, 'content-type');
-    if (pending.clientId && contentType.includes('text/html')) {
+    if (pending.clientId && isHtmlResponse(contentType)) {
       proxySessions.set(pending.clientId, { host: pending.host, port: pending.port });
     }
 
     pending.headers = headers;
-    pending.textResponse = isTextResponse(contentType);
+    pending.htmlResponse = isHtmlResponse(contentType);
     pending.contentLength = parseInt(getHeader(headers, 'content-length'), 10) || 0;
     pending.receivedBytes = 0;
-    if (pending.textResponse) {
+    if (pending.htmlResponse) {
       pending.textChunks = [];
     }
 
@@ -187,8 +182,8 @@ self.addEventListener('message', (event) => {
     return;
   }
 
-  function flushTextResponse(p) {
-    if (!p.textResponse || !p.textChunks) return;
+  function flushHtmlResponse(p) {
+    if (!p.htmlResponse || !p.textChunks) return;
     const total = p.receivedBytes;
     const merged = new Uint8Array(total);
     let offset = 0;
@@ -205,13 +200,13 @@ self.addEventListener('message', (event) => {
   if (type === 'tcp-chunk') {
     const chunk = new Uint8Array(event.data.data);
 
-    if (pending.textResponse) {
+    if (pending.htmlResponse) {
       pending.textChunks.push(chunk);
       pending.receivedBytes += chunk.length;
 
       if (pending.contentLength > 0 && pending.receivedBytes >= pending.contentLength) {
         pendingRequests.delete(id);
-        flushTextResponse(pending);
+        flushHtmlResponse(pending);
       }
       return;
     }
@@ -222,11 +217,11 @@ self.addEventListener('message', (event) => {
 
   if (type === 'tcp-done') {
     pendingRequests.delete(id);
-    if (pending.textResponse) {
+    if (pending.htmlResponse) {
       if (pending.contentLength > 0 && pending.receivedBytes < pending.contentLength) {
         pending.controller.error(new Error('Incomplete response'));
       } else {
-        flushTextResponse(pending);
+        flushHtmlResponse(pending);
       }
     } else {
       pending.controller.close();
