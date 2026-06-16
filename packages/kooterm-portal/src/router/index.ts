@@ -8,6 +8,10 @@ const router = createRouter({
       redirect: '/terminal'
     },
     {
+      path: '/vnc',
+      redirect: '/desktop'
+    },
+    {
       path: '/terminal',
       component: () => import('@/views/terminal.vue')
     },
