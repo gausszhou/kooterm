@@ -37,6 +37,10 @@ export function useTcpProxy() {
   let swRegistration: ServiceWorkerRegistration | null = null;
   let targetHost = '';
   let targetPort = 0;
+  let wsUrl = '';
+  let intentionalDestroy = false;
+  let reconnectAttempt = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   const pendingAborts = new Set<() => void>();
   const wsSessions = new Map<string, WsSessionEntry>();
 
@@ -206,9 +210,78 @@ export function useTcpProxy() {
     }
   };
 
+  function waitForOpen(conn: WebSocketConnection, timeoutMs = 15000): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('Reconnect timeout'));
+      }, timeoutMs);
+      const onOpen = () => { cleanup(); resolve(); };
+      const onClose = () => { cleanup(); reject(new Error('Reconnect closed')); };
+      const cleanup = () => {
+        clearTimeout(timer);
+        conn.removeEventListener('open', onOpen);
+        conn.removeEventListener('close', onClose as any);
+      };
+      conn.addEventListener('open', onOpen);
+      conn.addEventListener('close', onClose as any);
+    });
+  }
+
+  function startReconnect() {
+    if (intentionalDestroy) return;
+    stopReconnect();
+
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), 30000);
+    reconnectAttempt++;
+    connecting.value = true;
+    connected.value = false;
+    error.value = `Reconnecting in ${Math.round(delay / 1000)}s...`;
+    logger.info(`[Reconnect] attempt ${reconnectAttempt}, waiting ${delay}ms`);
+
+    reconnectTimer = setTimeout(async () => {
+      if (intentionalDestroy || !connection.value) return;
+
+      for (const abort of pendingAborts) abort();
+      pendingAborts.clear();
+      for (const [id, entry] of wsSessions) {
+        entry.session.close(1001, 'Reconnecting');
+      }
+      wsSessions.clear();
+
+      connection.value.reconnect(wsUrl);
+      try {
+        await waitForOpen(connection.value);
+        connected.value = true;
+        connecting.value = false;
+        error.value = '';
+        reconnectAttempt = 0;
+        logger.info('[Reconnect] success');
+
+        const iframe = document.querySelector('.tcp-iframe') as HTMLIFrameElement;
+        if (iframe && iframe.src) {
+          iframe.src = iframe.src;
+        }
+      } catch (err: any) {
+        logger.warn('[Reconnect] failed:', err.message);
+        startReconnect();
+      }
+    }, delay);
+  }
+
+  function stopReconnect() {
+    if (reconnectTimer !== null) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+  }
+
   const init = async (url: string, host: string, port: number) => {
     connecting.value = true;
     error.value = '';
+    intentionalDestroy = false;
+    reconnectAttempt = 0;
+    wsUrl = url;
 
     if (!navigator.serviceWorker) {
       error.value = 'Service Worker unavailable (requires HTTPS or localhost)';
@@ -228,6 +301,16 @@ export function useTcpProxy() {
       targetHost = host;
       targetPort = port;
 
+      connection.value.addEventListener('close', () => {
+        if (intentionalDestroy) return;
+        startReconnect();
+      });
+
+      connection.value.addEventListener('timeout', () => {
+        if (intentionalDestroy) return;
+        startReconnect();
+      });
+
       window.addEventListener('message', onWindowMessage);
 
       connected.value = true;
@@ -242,6 +325,8 @@ export function useTcpProxy() {
   };
 
   const destroy = () => {
+    intentionalDestroy = true;
+    stopReconnect();
     for (const abort of pendingAborts) abort();
     pendingAborts.clear();
 
