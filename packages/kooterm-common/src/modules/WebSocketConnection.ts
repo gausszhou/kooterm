@@ -5,6 +5,7 @@ import { log } from '../logger.js';
 export class WebSocketConnection extends EventTarget implements WebSocket {
   ws: WebSocket;
   private identifier: number;
+  private _intentionalClose = false;
   private dataChannels: Map<string, WebSocketDataChannel> = new Map();
   private dataChannelIdentifiers: Map<number, string> = new Map();
 
@@ -55,6 +56,14 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
 
   get bufferedAmount(): number {
     return this.ws.bufferedAmount;
+  }
+
+  get id(): number {
+    return this.identifier;
+  }
+
+  get intentionalClose(): boolean {
+    return this._intentionalClose;
   }
 
   constructor(url: string, protocol?: string) {
@@ -162,6 +171,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
   }
 
   public close() {
+    this._intentionalClose = true;
     this.clearDataChannels();
     this._stopKeepAlive();
     this.ws.close();
@@ -170,9 +180,10 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
 
   public reconnect(url: string, protocol?: string) {
     log.debug('重新连接到:', url, protocol);
+    this._intentionalClose = false;
+    this.clearDataChannels();
     const oldWs = this.ws;
     this.ws = this.createWebSocket(url, protocol);
-    this.identifier = FrameCodec.randomIdentifier();
     oldWs.close();
     clearInterval(this.speedTimer);
     this.speedTimer = setInterval(() => {
@@ -243,6 +254,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
 
   private _onError(ev: Event) {
     this.isConnected = false;
+    this.dispatchEvent(new Event('error'));
     this.getAllDataChannels().forEach(channel => {
       channel._onclose(ev);
     });
@@ -252,6 +264,7 @@ export class WebSocketConnection extends EventTarget implements WebSocket {
     this.isConnected = false;
     this._stopKeepAlive();
     const event = new CloseEvent('close', { code: ev.code, reason: ev.reason, wasClean: ev.wasClean });
+    this.dispatchEvent(event);
     this.getAllDataChannels().forEach(channel => {
       channel.dispatchEvent(event);
     });

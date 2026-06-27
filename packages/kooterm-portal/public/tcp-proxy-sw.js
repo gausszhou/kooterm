@@ -1,3 +1,11 @@
+// TCP Proxy Service Worker
+//
+// 两种代理模式：
+//   1. /tcp-proxy/{host}:{port}/* — URL 前缀匹配，用于 iframe 加载远程页面。
+//      对 HTML 响应做 URL 重写和 ws-override 注入。
+//   2. session 代理 — 对已代理 iframe 的非 /tcp-proxy/* 子请求，
+//      直接流式透传，不做任何改写。
+
 const PROXY_PREFIX = '/tcp-proxy/';
 const TIMEOUT_MS = 10000;
 
@@ -53,12 +61,20 @@ function rewriteHtml(html, targetHost, targetPort) {
   return result;
 }
 
-function isHtmlResponse(contentType) {
-  return contentType && contentType.includes('text/html');
+// 是否缓冲文本响应（全量接收后再输出）。
+// 仅用于 /tcp-proxy/* 请求：HTML 需 rewrite，JS/CSS 缓冲后原样输出。
+// session 代理请求不缓冲，直接流式透传。
+function isTextResponse(contentType) {
+  return contentType && (
+    contentType.includes('text/html') ||
+    contentType.includes('text/css') ||
+    contentType.includes('application/javascript') ||
+    contentType.includes('text/javascript')
+  );
 }
 
 function shouldBypassProxy(pathname) {
-  return     pathname.startsWith('/portal-direct-api') ||
+  return     pathname.startsWith('/portal-direct-api/') ||
     pathname.startsWith('/portal-direct-assets/') ||
     pathname === '/' ||
     pathname === '/tcp-proxy-sw.js' ||
@@ -74,7 +90,7 @@ function shouldBypassProxy(pathname) {
 self.addEventListener('fetch', (event) => {
   const parsed = parseUrl(event.request.url);
   if (parsed) {
-    event.respondWith(handleRequest(event, parsed));
+    event.respondWith(handleRequest(event, parsed, true));
     return;
   }
 
@@ -87,11 +103,11 @@ self.addEventListener('fetch', (event) => {
       host: session.host,
       port: session.port,
       path: url.pathname + url.search + url.hash,
-    }));
+    }, false));
   }
 });
 
-async function handleRequest(event, { host, port, path }) {
+async function handleRequest(event, { host, port, path }, fromProxyPrefix) {
   const requestId = crypto.randomUUID();
   const request = event.request;
 
@@ -136,7 +152,9 @@ async function handleRequest(event, { host, port, path }) {
       port,
       clientId: event.resultingClientId || event.clientId,
       controller: null,
-      textChunks: null,
+      chunks: null,
+      isHtml: false,
+      fromProxyPrefix: !!fromProxyPrefix,
     });
   });
 }
@@ -152,16 +170,19 @@ self.addEventListener('message', (event) => {
     const { status, statusText, headers } = event.data;
 
     const contentType = getHeader(headers, 'content-type');
-    if (pending.clientId && isHtmlResponse(contentType)) {
+    if (pending.clientId && contentType && contentType.includes('text/html')) {
       proxySessions.set(pending.clientId, { host: pending.host, port: pending.port });
     }
 
     pending.headers = headers;
-    pending.htmlResponse = isHtmlResponse(contentType);
+    pending.isHtml = contentType && contentType.includes('text/html');
     pending.contentLength = parseInt(getHeader(headers, 'content-length'), 10) || 0;
     pending.receivedBytes = 0;
-    if (pending.htmlResponse) {
-      pending.textChunks = [];
+
+    // 仅 /tcp-proxy/* 的文本响应需要缓冲（HTML rewrite / JS CSS 原样透传）
+    // session 代理的子资源全部直接流式输出
+    if (pending.fromProxyPrefix && isTextResponse(contentType)) {
+      pending.chunks = [];
     }
 
     const stream = new ReadableStream({
@@ -182,31 +203,41 @@ self.addEventListener('message', (event) => {
     return;
   }
 
-  function flushHtmlResponse(p) {
-    if (!p.htmlResponse || !p.textChunks) return;
-    const total = p.receivedBytes;
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (const c of p.textChunks) {
-      merged.set(c, offset);
-      offset += c.length;
+  // 将缓冲的文本响应输出到流。
+  // HTML：合并后 rewrite（URL 重写 + ws-override 注入）再输出。
+  // JS/CSS：缓冲的分块依次原样输出，不做改写。
+  function flushResponse(p) {
+    if (!p.chunks) return;
+
+    if (p.isHtml) {
+      const total = p.receivedBytes;
+      const merged = new Uint8Array(total);
+      let offset = 0;
+      for (const c of p.chunks) {
+        merged.set(c, offset);
+        offset += c.length;
+      }
+      const text = new TextDecoder().decode(merged);
+      const rewritten = rewriteHtml(text, p.host, p.port);
+      p.controller.enqueue(new TextEncoder().encode(rewritten));
+    } else {
+      for (const c of p.chunks) {
+        p.controller.enqueue(c);
+      }
     }
-    const text = new TextDecoder().decode(merged);
-    const rewritten = rewriteHtml(text, p.host, p.port);
-    p.controller.enqueue(new TextEncoder().encode(rewritten));
     p.controller.close();
   }
 
   if (type === 'tcp-chunk') {
     const chunk = new Uint8Array(event.data.data);
 
-    if (pending.htmlResponse) {
-      pending.textChunks.push(chunk);
+    if (pending.chunks) {
+      pending.chunks.push(chunk);
       pending.receivedBytes += chunk.length;
 
       if (pending.contentLength > 0 && pending.receivedBytes >= pending.contentLength) {
         pendingRequests.delete(id);
-        flushHtmlResponse(pending);
+        flushResponse(pending);
       }
       return;
     }
@@ -217,11 +248,11 @@ self.addEventListener('message', (event) => {
 
   if (type === 'tcp-done') {
     pendingRequests.delete(id);
-    if (pending.htmlResponse) {
+    if (pending.chunks) {
       if (pending.contentLength > 0 && pending.receivedBytes < pending.contentLength) {
         pending.controller.error(new Error('Incomplete response'));
       } else {
-        flushHtmlResponse(pending);
+        flushResponse(pending);
       }
     } else {
       pending.controller.close();

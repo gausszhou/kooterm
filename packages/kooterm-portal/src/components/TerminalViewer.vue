@@ -6,9 +6,7 @@
       :connecting="connecting"
       :connection="connection"
     />
-    <div>
-      <div ref="terminalRef" class="terminal-container"></div>
-    </div>
+    <div ref="terminalRef" class="terminal-container"></div>
   </div>
 </template>
 
