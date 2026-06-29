@@ -48,39 +48,43 @@ RUN wget -q -O /tmp/openvscode.tar.gz \
     && ln -sf /usr/lib/openvscode-server-v1.109.5-linux-x64/bin/openvscode-server /usr/local/bin/openvscode-server \
     && rm /tmp/openvscode.tar.gz
 
-# 7. opencode
+# 7. Python3 & JupyterLab
+RUN apt-get install -y python3 python3-pip python3-venv \
+    && pip3 install --no-cache-dir --break-system-packages jupyterlab
+
+# 8. opencode
 RUN wget -q -O /tmp/opencode.tar.gz \
     https://gitcode.com/mirror-releases/nodejs/releases/download/latest/opencode-linux-x64.tar.gz \
     && tar -xzf /tmp/opencode.tar.gz -C /usr/local/bin \
     && rm /tmp/opencode.tar.gz
 
-# 8. PATH
+# 9. PATH
 RUN echo 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"' > /etc/profile.d/dev-env.sh
 
-# 9. 用户
+# 10. 用户
 RUN useradd -m -s /bin/bash user \
     && echo "user:user" | chpasswd \
     && usermod -aG sudo user \
     && echo '%sudo ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-# 10. 工作目录
+# 11. 工作目录
 RUN mkdir -p /home/user/workspace \
     && chown -R user:user /home/user/workspace
 
-# 11. openvscode-server 配置（无密码）
+# 12. openvscode-server 配置（无密码）
 RUN mkdir -p /home/user/.vscode-server \
     && chown -R user:user /home/user/.vscode-server
 
-# 12. supervisord 配置（清理基础镜像残留配置）
+# 13. supervisord 配置（清理基础镜像残留配置）
 RUN rm -f /etc/supervisor/conf.d/* \
     && mkdir -p /var/log/supervisor \
-    && printf '[supervisord]\nnodaemon=true\nuser=root\nlogfile=/var/log/supervisor/supervisord.log\npidfile=/var/run/supervisord.pid\n\n[program:sshd]\ncommand=/usr/sbin/sshd -D\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/sshd.log\nstderr_logfile=/var/log/supervisor/sshd_err.log\n\n[program:vnc]\ncommand=/dockerstartup/vnc_startup.sh --wait\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/vnc.log\nstderr_logfile=/var/log/supervisor/vnc_err.log\n\n[program:openvscode]\ncommand=su - user -c "openvscode-server --host 0.0.0.0 --port 10800 --without-connection-token --default-folder /home/user/workspace"\ndirectory=/home/user/workspace\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/openvscode.log\nstderr_logfile=/var/log/supervisor/openvscode_err.log\n\n[program:opencode]\ncommand=su - user -c "opencode serve --hostname 0.0.0.0 --port 4096"\ndirectory=/home/user/workspace\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/opencode.log\nstderr_logfile=/var/log/supervisor/opencode_err.log\n' > /etc/supervisor/conf.d/supervisord.conf
+    && printf '[supervisord]\nnodaemon=true\nuser=root\nlogfile=/var/log/supervisor/supervisord.log\npidfile=/var/run/supervisord.pid\n\n[program:sshd]\ncommand=/usr/sbin/sshd -D\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/sshd.log\nstderr_logfile=/var/log/supervisor/sshd_err.log\n\n[program:vnc]\ncommand=/dockerstartup/vnc_startup.sh --wait\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/vnc.log\nstderr_logfile=/var/log/supervisor/vnc_err.log\n\n[program:openvscode]\ncommand=su - user -c "openvscode-server --host 0.0.0.0 --port 10800 --without-connection-token --default-folder /home/user/workspace"\ndirectory=/home/user/workspace\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/openvscode.log\nstderr_logfile=/var/log/supervisor/openvscode_err.log\n\n[program:opencode]\ncommand=su - user -c "opencode serve --hostname 0.0.0.0 --port 4096"\ndirectory=/home/user/workspace\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/opencode.log\nstderr_logfile=/var/log/supervisor/opencode_err.log\n\n[program:jupyter]\ncommand=su - user -c "jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --NotebookApp.token=\'\' --NotebookApp.password=\'\' --notebook-dir=/home/user/workspace"\ndirectory=/home/user/workspace\nautostart=true\nautorestart=true\nstdout_logfile=/var/log/supervisor/jupyter.log\nstderr_logfile=/var/log/supervisor/jupyter_err.log\n' > /etc/supervisor/conf.d/supervisord.conf
 
-# 13. 清理 apt 缓存
+# 14. 清理 apt 缓存
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
-EXPOSE 22 5901 10800 4096
+EXPOSE 22 5901 10800 4096 8888
 
 ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

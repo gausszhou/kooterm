@@ -84,6 +84,8 @@ function shouldBypassProxy(pathname) {
     pathname === '/vnc' ||
     pathname === '/opencode' ||
     pathname === '/openvscode' ||
+    pathname === '/jupyter' ||
+    pathname === '/lab' ||
     pathname === '/health';
 }
 
