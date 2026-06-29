@@ -36,15 +36,13 @@ const props = defineProps({
     type: Number,
     required: true,
   },
-  host: {
-    type: String,
-    default: 'debian-xfce-vnc',
-  },
   wsUrl: {
     type: String,
     default: '/portal-direct-api/ws/tcp',
   },
 });
+
+const targetHost = 'localhost';
 
 const iframeRef = ref<HTMLIFrameElement>();
 
@@ -52,11 +50,11 @@ const { connected, connecting, connection, error, init, destroy } = useTcpProxy(
 
 const iframeSrc = computed(() => {
   if (!connected.value) return '';
-  return `/tcp-proxy/${props.host}:${props.port}/`;
+  return `/tcp-proxy/${targetHost}:${props.port}/`;
 });
 
 onMounted(() => {
-  init(props.wsUrl, props.host, props.port);
+  init(props.wsUrl, targetHost, props.port);
 });
 
 onUnmounted(() => {

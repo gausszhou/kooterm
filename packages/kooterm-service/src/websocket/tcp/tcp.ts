@@ -2,6 +2,7 @@ import net from 'net';
 import { TcpErrorType } from '@kooterm/common';
 import { getLogger } from '../../logger.js';
 
+const TCP_TARGET_HOST = process.env.TARGET_HOST || 'localhost';
 const logger = getLogger('TcpProxy');
 
 function mapErrorType(code: string | undefined): number {
@@ -28,10 +29,11 @@ export class TcpProxySocket {
   public onConnect: (() => void) | null = null;
 
   constructor(identifier: number, host: string, port: number) {
-    logger.debug(`[TcpProxySocket] [${identifier}] connect ${host}:${port}`);
-    this.socket = net.createConnection({ host, port });
     this.identifier = identifier;
     this.port = port;
+    const resolvedHost = TCP_TARGET_HOST || host;
+    logger.debug(`[TcpProxySocket] [${identifier}] connect ${resolvedHost}:${port}${TCP_TARGET_HOST ? ` (env TARGET_HOST=${TCP_TARGET_HOST})` : ''}`);
+    this.socket = net.createConnection({ host: resolvedHost, port });
 
     this.socket.on('connect', () => {
       logger.debug(`[TcpProxySocket] [${identifier}] connected`);
