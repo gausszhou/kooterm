@@ -26,6 +26,14 @@ const router = createRouter({
     {
       path: '/openvscode',
       component: () => import('@/views/openvscode.vue')
+    },
+    {
+      path: '/lab',
+      redirect: '/jupyter'
+    },
+    {
+      path: '/jupyter',
+      component: () => import('@/views/jupyter.vue')
     }
   ]
 });
